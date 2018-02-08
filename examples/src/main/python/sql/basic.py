@@ -142,15 +142,14 @@ def basic_df_example(spark):
 def join_example(spark):
     employees = spark.createDataFrame([("bruce", 45), ("sally", 26), ("jean", 77)], ["name", "id"])
     salaries = spark.createDataFrame([(45, 10000), (77, 11000)], ["id", "salary"])
-    name_salary = employees.join(salaries, employees.id == salaries.id) \
-                           .select(employees.name, employees.id, salaries.salary)
-    name_salary.show()
+
+    employees.join(salaries, employees.id == salaries.id). \
+        select(employees.name, employees.id, salaries.salary).show()
 
     employees.createOrReplaceTempView("employees")
     salaries.createOrReplaceTempView("salaries")
-    name_salary2 = spark \
-                   .sql("SELECT name, e.id, salary FROM employees e JOIN salaries s ON e.id = s.id")
-    name_salary2.show()
+
+    spark.sql("SELECT name, e.id, salary FROM employees e JOIN salaries s ON e.id = s.id").show()
     
 def schema_inference_example(spark):
     # $example on:schema_inferring$

@@ -159,20 +159,18 @@ object SparkSQLExample {
 
   private def runJoinExample(spark: SparkSession): Unit = {
     import spark.implicits._
+    import spark.sql
 
     val employees = Seq(("bruce", 45), ("sally", 26), ("jean", 77)).toDF("name", "id")
     val salaries = Seq((45, 10000), (77, 11000)).toDF("id", "salary")
 
-    val nameSalary = employees.as("e").join(salaries.as("s"), $"e.id" === $"s.id")
-      .select($"name", $"e.id", $"salary")
-    nameSalary.show()
+    employees.as("e").join(salaries.as("s"), $"e.id" === $"s.id")
+      .select($"name", $"e.id", $"salary").show()
 
     employees.createOrReplaceTempView("employees")
     salaries.createOrReplaceTempView("salaries")
 
-    val nameSalary2 = spark.sql("SELECT name, e.id, salary FROM "
-      + "employees e JOIN salaries s ON e.id = s.id")
-    nameSalary2.show()
+    sql("SELECT name, e.id, salary FROM employees e JOIN salaries s ON e.id = s.id").show()
   }
 
   private def runDatasetCreationExample(spark: SparkSession): Unit = {

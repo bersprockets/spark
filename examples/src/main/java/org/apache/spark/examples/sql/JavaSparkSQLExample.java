@@ -256,17 +256,13 @@ public class JavaSparkSQLExample {
 
     Dataset<Row> salaries = spark.createDataFrame(salaryList, Salary.class);
 
-    Dataset<Row> nameSalary = employees.as("e")
-            .join(salaries.as("s"), col("e.id").equalTo(col("s.id")))
-            .select(col("name"), col("e.id"), col("salary"));
-    nameSalary.show();
+    employees.as("e").join(salaries.as("s"), col("e.id").equalTo(col("s.id")))
+            .select(col("name"), col("e.id"), col("salary")).show();
 
     employees.createOrReplaceTempView("employees");
     salaries.createOrReplaceTempView("salaries");
-    Dataset<Row> nameSalary2 =
-            spark.sql("select name, e.id, salary "
-            + "from employees e join salaries s on e.id = s.id");
-    nameSalary2.show();
+
+    spark.sql("select name, e.id, salary from employees e join salaries s on e.id = s.id").show();
   }
 
   private static void runDatasetCreationExample(SparkSession spark) {
