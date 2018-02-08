@@ -85,6 +85,43 @@ public class JavaSparkSQLExample {
   }
   // $example off:create_ds$
 
+
+  public static class Employee implements Serializable {
+    private String name;
+    private int id;
+
+    public Employee(String name, int id) {
+      this.name = name;
+      this.id = id;
+    }
+
+    public String getName() { return name; }
+
+    public void setName(String name) { this.name = name; }
+
+    public int getId() { return id; }
+
+    public void setId(int id) { this.id = id; }
+  }
+
+  public static class Salary implements Serializable {
+    private int id;
+    private int salary;
+
+    public Salary(int id, int salary) {
+      this.id = id;
+      this.salary = salary;
+    }
+
+    public int getId() { return id; }
+
+    public void setId(int id) { this.id = id; }
+
+    public int getSalary() { return salary; }
+
+    public void setSalary(int salary) { this.salary = salary; }
+  }
+
   public static void main(String[] args) throws AnalysisException {
     // $example on:init_session$
     SparkSession spark = SparkSession
@@ -94,6 +131,7 @@ public class JavaSparkSQLExample {
       .getOrCreate();
     // $example off:init_session$
 
+    runJoinExample(spark);
     runBasicDataFrameExample(spark);
     runDatasetCreationExample(spark);
     runInferSchemaExample(spark);
@@ -202,6 +240,33 @@ public class JavaSparkSQLExample {
     // |  19| Justin|
     // +----+-------+
     // $example off:global_temp_view$
+  }
+
+  private static void runJoinExample(SparkSession spark) {
+    List<Employee> employeeList = new ArrayList<>();
+    employeeList.add(new Employee("bruce", 45));
+    employeeList.add(new Employee("sally", 26));
+    employeeList.add(new Employee("jean", 77));
+
+    Dataset<Row> employees = spark.createDataFrame(employeeList, Employee.class);
+
+    List<Salary> salaryList = new ArrayList<>();
+    salaryList.add(new Salary(45, 10000));
+    salaryList.add(new Salary(77, 11000));
+
+    Dataset<Row> salaries = spark.createDataFrame(salaryList, Salary.class);
+
+    Dataset<Row> nameSalary = employees.as("e")
+            .join(salaries.as("s"), col("e.id").equalTo(col("s.id")))
+            .select(col("name"), col("e.id"), col("salary"));
+    nameSalary.show();
+
+    employees.createOrReplaceTempView("employees");
+    salaries.createOrReplaceTempView("salaries");
+    Dataset<Row> nameSalary2 =
+            spark.sql("select name, e.id, salary "
+            + "from employees e join salaries s on e.id = s.id");
+    nameSalary2.show();
   }
 
   private static void runDatasetCreationExample(SparkSession spark) {
