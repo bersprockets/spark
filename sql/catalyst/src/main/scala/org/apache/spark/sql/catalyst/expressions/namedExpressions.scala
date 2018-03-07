@@ -233,7 +233,13 @@ case class AttributeReference(
 
   override def semanticEquals(other: Expression): Boolean = other match {
     case ar: AttributeReference => sameRef(ar)
-    case _ => false
+    case gsf: GetStructField =>
+      print(s"this.name is '$name'; gsf.name is '${gsf.toString}'; "
+        + s"this.dataType is '${dataType}'; gsf.dataType is ${gsf.dataType}\n")
+      name.equals(gsf.toString) && dataType.equals(gsf.dataType)
+    case _ =>
+      print("It no matchy!\n")
+      false
   }
 
   override def semanticHash(): Int = {
