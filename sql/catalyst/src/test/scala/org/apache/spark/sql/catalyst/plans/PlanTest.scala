@@ -113,6 +113,9 @@ trait PlanTestBase extends PredicateHelper { self: Suite =>
 
     val normalized1 = normalizePlan(normalizeExprIds(plan1))
     val normalized2 = normalizePlan(normalizeExprIds(plan2))
+    // scalastyle:off println
+    println(normalized1.equals(normalized2))
+    println(normalized1.eq(normalized2))
     if (normalized1 != normalized2) {
       fail(
         s"""
@@ -120,6 +123,10 @@ trait PlanTestBase extends PredicateHelper { self: Suite =>
           |${sideBySide(normalized1.treeString, normalized2.treeString).mkString("\n")}
          """.stripMargin)
     }
+  }
+
+  def getMeNormalized(plan: LogicalPlan): LogicalPlan = {
+    normalizePlan(normalizeExprIds(plan))
   }
 
   /** Fails the test if the two expressions do not match */

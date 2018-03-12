@@ -109,6 +109,10 @@ abstract class Attribute extends LeafExpression with NamedExpression with NullIn
 
 }
 
+object expressionMap {
+  val map = scala.collection.mutable.Map[Long, Expression]()
+}
+
 /**
  * Used to assign a new name to a computation.
  * For example the SQL expression "1 + 1 AS a" could be represented as follows:
@@ -131,6 +135,9 @@ case class Alias(child: Expression, name: String)(
     val qualifier: Option[String] = None,
     val explicitMetadata: Option[Metadata] = None)
   extends UnaryExpression with NamedExpression {
+
+  // scalastyle:off println
+  // println(s"Creating alias for ${child} as name ${name}")
 
   // Alias(Generator, xx) need to be transformed into Generate(generator, ...)
   override lazy val resolved =
@@ -160,6 +167,9 @@ case class Alias(child: Expression, name: String)(
 
   override def toAttribute: Attribute = {
     if (resolved) {
+      // scalastyle:off println
+      // println(s"putting ${exprId.id} in map")
+      expressionMap.map.put(exprId.id, child)
       AttributeReference(name, child.dataType, child.nullable, metadata)(exprId, qualifier)
     } else {
       UnresolvedAttribute(name)
@@ -219,6 +229,15 @@ case class AttributeReference(
     val qualifier: Option[String] = None)
   extends Attribute with Unevaluable {
 
+  // scalastyle:off println
+  try {
+    throw new Exception("catch")
+  } catch {
+    case ex: Exception =>
+      println((s"Creating attribute reference for ${exprId}, named ${name}, called by:"))
+      // ex.getStackTrace.slice(0, 4).foreach(println)
+  }
+
   /**
    * Returns true iff the expression id is the same for both attributes.
    */
@@ -262,6 +281,7 @@ case class AttributeReference(
     if (nullable == newNullability) {
       this
     } else {
+      println(s"New AttributeReference for id ${exprId.id} with new nullability ${newNullability}")
       AttributeReference(name, dataType, newNullability, metadata)(exprId, qualifier)
     }
   }

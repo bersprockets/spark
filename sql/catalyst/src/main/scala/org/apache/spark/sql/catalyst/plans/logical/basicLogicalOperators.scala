@@ -48,6 +48,15 @@ case class Subquery(child: LogicalPlan) extends UnaryNode {
 }
 
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan) extends UnaryNode {
+
+  // scalastyle:off println
+  try {
+    throw new Exception("catch")
+  } catch {
+    case ex: Exception =>
+      println((s"New Project for projectList ${projectList}"))
+      // ex.getStackTrace.slice(0, 10).foreach(println)
+  }
   override def output: Seq[Attribute] = projectList.map(_.toAttribute)
   override def maxRows: Option[Long] = child.maxRows
 
