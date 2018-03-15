@@ -44,7 +44,11 @@ object SimplifyExtractValueOps extends Rule[LogicalPlan] {
         // altogether.
         if (idx >= 0 && idx < elems.size) {
           // valid index
-          elems(idx)
+          val retVal = elems(idx)
+          // scalastyle:off println
+          println(s"Simplified array element ${retVal.getClass.getSimpleName} " +
+            s"get has nullable ${retVal.nullable}")
+          retVal
         } else {
           // out of bounds, mimic the runtime behavior and return null
           Literal(null, ga.dataType)

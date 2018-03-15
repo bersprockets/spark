@@ -17,8 +17,6 @@
 
 package org.apache.spark.sql.catalyst.optimizer
 
-import javax.swing.tree.TreeNode
-
 import org.apache.spark.sql.catalyst.dsl.expressions._
 import org.apache.spark.sql.catalyst.dsl.plans._
 import org.apache.spark.sql.catalyst.expressions._
@@ -333,44 +331,38 @@ class ComplexTypesSuite extends PlanTest with ExpressionEvalHelper {
     comparePlans(Optimizer execute rel, expected)
   }
 
-  def chopPlan(plan: QueryPlan[LogicalPlan]): String = {
-    val index = plan.toString.indexOf('\n')
-    if (index == -1) {
-      plan.toString
-    } else {
-      plan.toString.substring(0, index)
-    }
-  }
-
   // scalastyle:off println
   def attributeExplore(attr: Expression, indent: String, marker: String = "?"): Unit = {
-    val message = s"${marker}${indent}${attr.getClass.getSimpleName} ${attr} " +
-      s"nullable=${attr.nullable}"
-    attr match {
-      case ar: AttributeReference =>
-        expressionMap.map.get(ar.exprId.id) match {
-          case Some(expression) =>
-            println(s"${message} orig=${expression} nullable=${expression.nullable}")
-          case None =>
-            println(s"${message} orig=??????")
-        }
-      case _ =>
-        println(message)
+    val exprId = attr match {
+      case ar: AttributeReference => ar.exprId.id
+      case ne: NamedExpression => ne.exprId.id
+      case _ => "??"
     }
+    val message = s"${marker}${indent}${attr.getClass.getSimpleName} ${attr} ${exprId} " +
+      s"nullable=${attr.nullable}"
+    println(message)
     attr.children.foreach { child =>
-      attributeExplore(child, indent + " ")
+      attributeExplore(child, indent + "  ")
     }
   }
 
   def treeExplore(plan: QueryPlan[LogicalPlan], indent: String = ""): Unit = {
-    println("&" + indent + chopPlan(plan))
+    println(s"&${indent}${plan.getClass.getSimpleName} ${plan.output}")
     plan match {
       case ag: org.apache.spark.sql.catalyst.plans.logical.Aggregate =>
         ag.groupingExpressions.foreach { attr =>
           attributeExplore(attr, indent + "  ")
         }
+      case pr: Projection =>
+        pr.expressions.foreach { attr =>
+          attributeExplore(attr, indent + "  ")
+        }
+      case lr: LocalRelation =>
+        lr.expressions.foreach { attr =>
+          attributeExplore(attr, indent + "  ")
+        }
       case _ =>
-        plan.output.foreach { attr =>
+        plan.allAttributes.attrs.foreach { attr =>
           attributeExplore(attr, indent + "  ")
         }
     }
@@ -399,6 +391,7 @@ class ComplexTypesSuite extends PlanTest with ExpressionEvalHelper {
     // relation. If that attribute is non-nullable, the tests will fail as the plans will
     // compare differently, so for these tests we must use a nullable attribute. See
     // SPARK-23634.
+    AttributeReferenceDebug.debug = true
     println("starting array test")
     val arrayRel = relation
       .select(GetArrayItem(CreateArray(Seq('nullable_id, 'nullable_id + 1L)), 0) as "a1")
@@ -417,6 +410,8 @@ class ComplexTypesSuite extends PlanTest with ExpressionEvalHelper {
     treeExplore(arrayExpected)
     comparePlans(Optimizer execute arrayRel, arrayExpected)
     println("ending array test part 2")
+    AttributeReferenceDebug.debug = false
+
     val mapRel = relation
       .select(GetMapValue(CreateMap(Seq("id", 'nullable_id)), "id") as "m1")
       .groupBy($"m1")("1").analyze

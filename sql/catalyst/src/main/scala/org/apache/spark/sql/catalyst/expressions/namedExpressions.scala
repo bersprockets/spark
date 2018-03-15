@@ -100,17 +100,16 @@ abstract class Attribute extends LeafExpression with NamedExpression with NullIn
   override def references: AttributeSet = AttributeSet(this)
 
   def withNullability(newNullability: Boolean): Attribute
+
   def withQualifier(newQualifier: Option[String]): Attribute
+
   def withName(newName: String): Attribute
+
   def withMetadata(newMetadata: Metadata): Attribute
 
   override def toAttribute: Attribute = this
+
   def newInstance(): Attribute
-
-}
-
-object expressionMap {
-  val map = scala.collection.mutable.Map[Long, Expression]()
 }
 
 /**
@@ -167,9 +166,6 @@ case class Alias(child: Expression, name: String)(
 
   override def toAttribute: Attribute = {
     if (resolved) {
-      // scalastyle:off println
-      // println(s"putting ${exprId.id} in map")
-      expressionMap.map.put(exprId.id, child)
       AttributeReference(name, child.dataType, child.nullable, metadata)(exprId, qualifier)
     } else {
       UnresolvedAttribute(name)
@@ -207,6 +203,9 @@ case class Alias(child: Expression, name: String)(
   }
 }
 
+object AttributeReferenceDebug {
+  var debug = false
+}
 /**
  * A reference to an attribute produced by another operator in the tree.
  *
@@ -229,13 +228,20 @@ case class AttributeReference(
     val qualifier: Option[String] = None)
   extends Attribute with Unevaluable {
 
-  // scalastyle:off println
-  try {
-    throw new Exception("catch")
-  } catch {
-    case ex: Exception =>
-      println((s"Creating attribute reference for ${exprId}, named ${name}, called by:"))
-      // ex.getStackTrace.slice(0, 4).foreach(println)
+  if (AttributeReferenceDebug.debug) {
+    // scalastyle:off println
+    try {
+      throw new Exception("catch")
+    } catch {
+      case ex: Exception =>
+        val stackTrace = ex.getStackTrace
+        if (!stackTrace.exists { e =>
+          e.toString.contains("treeExplore")
+        }) {
+          // println((s"Creating attribute reference for ${exprId}, named ${name}, called by:"))
+          // stackTrace.foreach(println)
+        }
+    }
   }
 
   /**
@@ -278,15 +284,18 @@ case class AttributeReference(
    * Returns a copy of this [[AttributeReference]] with changed nullability.
    */
   override def withNullability(newNullability: Boolean): AttributeReference = {
+    println((s"Creating attribute reference for ${exprId}, named ${name}, " +
+      s"with nullability ${newNullability}"))
     if (nullable == newNullability) {
       this
     } else {
-      println(s"New AttributeReference for id ${exprId.id} with new nullability ${newNullability}")
       AttributeReference(name, dataType, newNullability, metadata)(exprId, qualifier)
     }
   }
 
   override def withName(newName: String): AttributeReference = {
+    println((s"Creating attribute reference for ${exprId}, named ${name}, " +
+      s"with name ${newName}"))
     if (name == newName) {
       this
     } else {
@@ -298,7 +307,9 @@ case class AttributeReference(
    * Returns a copy of this [[AttributeReference]] with new qualifier.
    */
   override def withQualifier(newQualifier: Option[String]): AttributeReference = {
-    if (newQualifier == qualifier) {
+    println((s"Creating attribute reference for ${exprId}, named ${name}, " +
+      s"with qualifier ${newQualifier}"))
+    if (newQualifier == newQualifier) {
       this
     } else {
       AttributeReference(name, dataType, nullable, metadata)(exprId, newQualifier)
@@ -306,6 +317,8 @@ case class AttributeReference(
   }
 
   def withExprId(newExprId: ExprId): AttributeReference = {
+    println((s"Creating attribute reference for ${exprId}, named ${name}, " +
+      s"with exprid ${newExprId}"))
     if (exprId == newExprId) {
       this
     } else {
@@ -314,6 +327,8 @@ case class AttributeReference(
   }
 
   override def withMetadata(newMetadata: Metadata): Attribute = {
+    println((s"Creating attribute reference for ${exprId}, named ${name}, " +
+      s"with metedata ${newMetadata}"))
     AttributeReference(name, dataType, nullable, newMetadata)(exprId, qualifier)
   }
 
