@@ -24,6 +24,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{AnalysisException, Row, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.UnsupportedOperationChecker
+import org.apache.spark.sql.catalyst.expressions.{AttributeReference, Expression, NamedExpression, Projection}
+import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, ReturnAnswer}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
@@ -79,12 +81,55 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
   /** Internal version of the RDD. Avoids copies and has no schema */
   lazy val toRdd: RDD[InternalRow] = executedPlan.execute()
 
+  // scalastyle:off println
+  def attributeExplore(attr: Expression, indent: String, marker: String = "?"): Unit = {
+    val exprId = attr match {
+      case ar: AttributeReference => ar.exprId.id
+      case ne: NamedExpression => ne.exprId.id
+      case _ => "??"
+    }
+    val message = s"${marker}${indent}${attr.getClass.getSimpleName} ${attr} ${exprId} " +
+      s"nullable=${attr.nullable}"
+    println(message)
+    attr.children.foreach { child =>
+      attributeExplore(child, indent + "  ")
+    }
+  }
+
+  def treeExplore[T <: QueryPlan[T]](plan: QueryPlan[T], indent: String = ""): Unit = {
+    println(s"&${indent}${plan.getClass.getSimpleName} ${plan.output}")
+    /* plan.allAttributes.attrs.foreach { attr =>
+      attributeExplore(attr, indent + "  ")
+    } */
+
+    plan.productIterator.foreach { item =>
+      item match {
+        case e: Expression =>
+          attributeExplore(e, indent + "  ")
+        case se: Seq[_] if (se.size > 0 && se(0).isInstanceOf[Expression]) =>
+          se.foreach { attr =>
+            attributeExplore(attr.asInstanceOf[Expression], indent + "  ")
+          }
+        case _ => // do nothing
+      }
+    }
+
+    plan.children.foreach { child =>
+      treeExplore(child.asInstanceOf[QueryPlan[T]], indent + "  ")
+    }
+  }
+
   /**
    * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal
    * row format conversions as needed.
    */
   protected def prepareForExecution(plan: SparkPlan): SparkPlan = {
-    preparations.foldLeft(plan) { case (sp, rule) => rule.apply(sp) }
+    treeExplore(plan)
+    val retVal = preparations.foldLeft(plan) { case (sp, rule) => rule.apply(sp) }
+    treeExplore(retVal)
+    println("Actual sparkplan type " + retVal.getClass.getName)
+    debug.codegen(retVal)
+    retVal
   }
 
   /** A sequence of rules that will be applied in order to the physical plan before execution. */
@@ -238,6 +283,12 @@ class QueryExecution(val sparkSession: SparkSession, val logical: LogicalPlan) {
     def codegen(): Unit = {
       // scalastyle:off println
       println(org.apache.spark.sql.execution.debug.codegenString(executedPlan))
+      // scalastyle:on println
+    }
+
+    def codegen(plan: SparkPlan): Unit = {
+      // scalastyle:off println
+      println(org.apache.spark.sql.execution.debug.codegenString(plan))
       // scalastyle:on println
     }
 
