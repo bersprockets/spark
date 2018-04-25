@@ -169,7 +169,8 @@ object UnsafeProjection extends UnsafeProjectionCreator {
       .map(_ transform {
         case CreateNamedStruct(children) => CreateNamedStructUnsafe(children)
     })
-    GenerateUnsafeProjection.generate(e, subexpressionEliminationEnabled)
+    InterpretedUnsafeProjection.create(e);
+    // GenerateUnsafeProjection.generate(e, subexpressionEliminationEnabled)
   }
 }
 

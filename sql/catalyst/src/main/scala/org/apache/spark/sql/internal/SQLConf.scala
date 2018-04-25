@@ -669,7 +669,7 @@ object SQLConf {
     .doc("When true, the whole stage (of multiple operators) will be compiled into single java" +
       " method.")
     .booleanConf
-    .createWithDefault(true)
+    .createWithDefault(false)
 
   val WHOLESTAGE_CODEGEN_USE_ID_IN_CLASS_NAME =
     buildConf("spark.sql.codegen.useIdInClassName")
@@ -1374,7 +1374,7 @@ class SQLConf extends Serializable with Logging {
 
   def optimizerMetadataOnly: Boolean = getConf(OPTIMIZER_METADATA_ONLY)
 
-  def wholeStageEnabled: Boolean = getConf(WHOLESTAGE_CODEGEN_ENABLED)
+  def wholeStageEnabled: Boolean = false
 
   def wholeStageUseIdInClassName: Boolean = getConf(WHOLESTAGE_CODEGEN_USE_ID_IN_CLASS_NAME)
 

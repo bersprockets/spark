@@ -397,12 +397,12 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
 
   protected def newPredicate(
       expression: Expression, inputSchema: Seq[Attribute]): GenPredicate = {
-    try {
-      GeneratePredicate.generate(expression, inputSchema)
-    } catch {
-      case _ @ (_: InternalCompilerException | _: CompileException) if codeGenFallBack =>
+    // try {
+    //  GeneratePredicate.generate(expression, inputSchema)
+    // } catch {
+    //   case _ @ (_: InternalCompilerException | _: CompileException) if codeGenFallBack =>
         genInterpretedPredicate(expression, inputSchema)
-    }
+    // }
   }
 
   protected def newOrdering(
