@@ -154,7 +154,8 @@ trait UnsafeProjectionCreator {
 object UnsafeProjection extends UnsafeProjectionCreator {
 
   override protected def createProjection(exprs: Seq[Expression]): UnsafeProjection = {
-    GenerateUnsafeProjection.generate(exprs)
+    InterpretedUnsafeProjection.create(exprs)
+    // GenerateUnsafeProjection.generate(exprs)
   }
 
   /**
