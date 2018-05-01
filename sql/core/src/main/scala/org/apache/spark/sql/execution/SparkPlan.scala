@@ -391,7 +391,8 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     } else {
       str
     }
-    logWarning(s"Codegen disabled for this expression:\n $logMessage")
+    // print(s"Creating new predicate for expression $expression\n")
+    // logWarning(s"Codegen disabled for this expression:\n $logMessage")
     InterpretedPredicate.create(expression, inputSchema)
   }
 

@@ -1641,14 +1641,14 @@ class DataFrameSuite extends QueryTest with SharedSQLContext {
     // When generating expected results at here, we need to follow the implementation of
     // Rand expression.
     def expected(df: DataFrame): Seq[Row] = {
-      df.rdd.collectPartitions().zipWithIndex.flatMap {
+      df.rdd.coalesce(1).collectPartitions().zipWithIndex.flatMap {
         case (data, index) =>
           val rng = new org.apache.spark.util.random.XORShiftRandom(7 + index)
           data.filter(_.getInt(0) < rng.nextDouble() * 10)
       }
     }
 
-    val union = df1.union(df2)
+    val union = df1.union(df2).coalesce(1)
     checkAnswer(
       union.filter('i < rand(7) * 10),
       expected(union)
@@ -1662,7 +1662,7 @@ class DataFrameSuite extends QueryTest with SharedSQLContext {
       }
     )
 
-    val intersect = df1.intersect(df2)
+    val intersect = df1.intersect(df2).coalesce(1)
     checkAnswer(
       intersect.filter('i < rand(7) * 10),
       expected(intersect)
