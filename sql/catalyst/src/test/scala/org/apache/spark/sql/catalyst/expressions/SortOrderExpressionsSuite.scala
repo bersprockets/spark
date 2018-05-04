@@ -18,15 +18,19 @@
 package org.apache.spark.sql.catalyst.expressions
 
 import java.sql.{Date, Timestamp}
+import java.util.TimeZone
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
-import org.apache.spark.util.collection.unsafe.sort.PrefixComparators.{BinaryPrefixComparator, DoublePrefixComparator, StringPrefixComparator}
+import org.apache.spark.util.collection.unsafe.sort.PrefixComparators._
 
 class SortOrderExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper {
 
   test("SortPrefix") {
+    // Explicitly choose a time zone, since Date objects can create different values depending on
+    // local time zone of the machine on which the test is running
+    TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
     val b1 = Literal.create(false, BooleanType)
     val b2 = Literal.create(true, BooleanType)
     val i1 = Literal.create(20132983, IntegerType)
@@ -48,6 +52,8 @@ class SortOrderExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper 
     val dec1 = Literal(Decimal(20132983L, 10, 2))
     val dec2 = Literal(Decimal(20132983L, 19, 2))
     val dec3 = Literal(Decimal(20132983L, 21, 2))
+    val list1 = Literal(List(1, 2), ArrayType(IntegerType))
+    val nullVal = Literal.create(null, IntegerType)
 
     checkEvaluation(SortPrefix(SortOrder(b1, Ascending)), 0L)
     checkEvaluation(SortPrefix(SortOrder(b2, Ascending)), 1L)
@@ -57,7 +63,7 @@ class SortOrderExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper 
     checkEvaluation(SortPrefix(SortOrder(l2, Ascending)), -20132983L)
     // For some reason, the Literal.create code gives us the number of days since the epoch
     checkEvaluation(SortPrefix(SortOrder(d1, Ascending)), 17649L)
-    checkEvaluation(SortPrefix(SortOrder(t1, Ascending)), millis*1000)
+    checkEvaluation(SortPrefix(SortOrder(t1, Ascending)), millis * 1000)
     checkEvaluation(SortPrefix(SortOrder(f1, Ascending)),
       DoublePrefixComparator.computePrefix(f1.value.asInstanceOf[Float].toDouble))
     checkEvaluation(SortPrefix(SortOrder(f2, Ascending)),
@@ -78,5 +84,7 @@ class SortOrderExpressionsSuite extends SparkFunSuite with ExpressionEvalHelper 
     checkEvaluation(SortPrefix(SortOrder(dec2, Ascending)), 2013298L)
     checkEvaluation(SortPrefix(SortOrder(dec3, Ascending)),
       DoublePrefixComparator.computePrefix(201329.83d))
+    checkEvaluation(SortPrefix(SortOrder(list1, Ascending)), 0L)
+    checkEvaluation(SortPrefix(SortOrder(nullVal, Ascending)), null)
   }
 }
