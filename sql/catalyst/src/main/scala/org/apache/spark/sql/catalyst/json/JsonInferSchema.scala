@@ -131,7 +131,7 @@ private[sql] class JsonInferSchema(options: JSONOptions) extends Serializable {
          } else {
            None
          }
-        if (options.prefersDecimal && decimalTry.isDefined) {
+        if (decimalTry.isDefined) {
           decimalTry.get
         } else if (options.inferTimestamp &&
             (allCatch opt timestampFormatter.parse(field)).isDefined) {
