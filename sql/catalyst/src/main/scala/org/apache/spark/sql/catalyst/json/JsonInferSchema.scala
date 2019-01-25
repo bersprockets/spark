@@ -123,14 +123,14 @@ private[sql] class JsonInferSchema(options: JSONOptions) extends Serializable {
       case VALUE_STRING =>
         val field = parser.getText
         val decimalTry =
-         if (options.prefersDecimal) {
-           allCatch opt {
-             val bigDecimal = decimalParser(field)
-             DecimalType(bigDecimal.precision, bigDecimal.scale)
-           }
-         } else {
-           None
-         }
+          if (options.prefersDecimal) {
+            allCatch opt {
+              val bigDecimal = decimalParser(field)
+              DecimalType(bigDecimal.precision, bigDecimal.scale)
+            }
+          } else {
+            None
+          }
         if (decimalTry.isDefined) {
           decimalTry.get
         } else if (options.inferTimestamp &&
