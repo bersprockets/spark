@@ -461,46 +461,53 @@ object PartitioningUtils {
       timeZone: TimeZone,
       dateFormatter: DateFormatter,
       timestampFormatter: TimestampFormatter): Literal = {
-    val decimalTry = Try {
-      // `BigDecimal` conversion can fail when the `field` is not a form of number.
-      val bigDecimal = new JBigDecimal(raw)
-      // It reduces the cases for decimals by disallowing values having scale (eg. `1.1`).
-      require(bigDecimal.scale <= 0)
-      // `DecimalType` conversion can fail when
-      //   1. The precision is bigger than 38.
-      //   2. scale is bigger than precision.
-      Literal(bigDecimal)
-    }
 
-    val dateTry = Try {
-      // try and parse the date, if no exception occurs this is a candidate to be resolved as
-      // DateType
-      dateFormatter.parse(raw)
-      // SPARK-23436: Casting the string to date may still return null if a bad Date is provided.
-      // This can happen since DateFormat.parse  may not use the entire text of the given string:
-      // so if there are extra-characters after the date, it returns correctly.
-      // We need to check that we can cast the raw string since we later can use Cast to get
-      // the partition values with the right DataType (see
-      // org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex.inferPartitioning)
-      val dateValue = Cast(Literal(raw), DateType).eval()
-      // Disallow DateType if the cast returned null
-      require(dateValue != null)
-      Literal.create(dateValue, DateType)
-    }
+    if (!typeInference) {
+      if (raw == DEFAULT_PARTITION_NAME) {
+        Literal.create(null, NullType)
+      } else {
+        Literal.create(unescapePathName(raw), StringType)
+      }
+    } else {
+      val decimalTry = Try {
+        // `BigDecimal` conversion can fail when the `field` is not a form of number.
+        val bigDecimal = new JBigDecimal(raw)
+        // It reduces the cases for decimals by disallowing values having scale (eg. `1.1`).
+        require(bigDecimal.scale <= 0)
+        // `DecimalType` conversion can fail when
+        //   1. The precision is bigger than 38.
+        //   2. scale is bigger than precision.
+        Literal(bigDecimal)
+      }
 
-    val timestampTry = Try {
-      val unescapedRaw = unescapePathName(raw)
-      // try and parse the date, if no exception occurs this is a candidate to be resolved as
-      // TimestampType
-      timestampFormatter.parse(unescapedRaw)
-      // SPARK-23436: see comment for date
-      val timestampValue = Cast(Literal(unescapedRaw), TimestampType, Some(timeZone.getID)).eval()
-      // Disallow TimestampType if the cast returned null
-      require(timestampValue != null)
-      Literal.create(timestampValue, TimestampType)
-    }
+      val dateTry = Try {
+        // try and parse the date, if no exception occurs this is a candidate to be resolved as
+        // DateType
+        dateFormatter.parse(raw)
+        // SPARK-23436: Casting the string to date may still return null if a bad Date is provided.
+        // This can happen since DateFormat.parse  may not use the entire text of the given string:
+        // so if there are extra-characters after the date, it returns correctly.
+        // We need to check that we can cast the raw string since we later can use Cast to get
+        // the partition values with the right DataType (see
+        // org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex.inferPartitioning)
+        val dateValue = Cast(Literal(raw), DateType).eval()
+        // Disallow DateType if the cast returned null
+        require(dateValue != null)
+        Literal.create(dateValue, DateType)
+      }
 
-    if (typeInference) {
+      val timestampTry = Try {
+        val unescapedRaw = unescapePathName(raw)
+        // try and parse the date, if no exception occurs this is a candidate to be resolved as
+        // TimestampType
+        timestampFormatter.parse(unescapedRaw)
+        // SPARK-23436: see comment for date
+        val timestampValue = Cast(Literal(unescapedRaw), TimestampType, Some(timeZone.getID)).eval()
+        // Disallow TimestampType if the cast returned null
+        require(timestampValue != null)
+        Literal.create(timestampValue, TimestampType)
+      }
+
       // First tries integral types
       Try(Literal.create(Integer.parseInt(raw), IntegerType))
         .orElse(Try(Literal.create(JLong.parseLong(raw), LongType)))
@@ -512,17 +519,11 @@ object PartitioningUtils {
         .orElse(dateTry)
         // Then falls back to string
         .getOrElse {
-          if (raw == DEFAULT_PARTITION_NAME) {
-            Literal.create(null, NullType)
-          } else {
-            Literal.create(unescapePathName(raw), StringType)
-          }
+        if (raw == DEFAULT_PARTITION_NAME) {
+          Literal.create(null, NullType)
+        } else {
+          Literal.create(unescapePathName(raw), StringType)
         }
-    } else {
-      if (raw == DEFAULT_PARTITION_NAME) {
-        Literal.create(null, NullType)
-      } else {
-        Literal.create(unescapePathName(raw), StringType)
       }
     }
   }
