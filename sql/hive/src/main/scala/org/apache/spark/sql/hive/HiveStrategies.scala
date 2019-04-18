@@ -150,6 +150,35 @@ class DetermineTableStats(session: SparkSession) extends Rule[LogicalPlan] {
   }
 }
 
+class HiveBucketAnalysis(session: SparkSession) extends Rule[LogicalPlan] {
+  override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
+    case InsertIntoTable(r: HiveTableRelation, partition, query, overwrite, ifPartitionNotExists)
+      // Inserting into partitioned table is not supported in Parquet/Orc data source (yet).
+      if query.resolved && DDLUtils.isHiveTable(r.tableMeta) &&
+        r.tableMeta.bucketSpec.isDefined =>
+
+      val table = r.tableMeta
+      val bucketSpec = table.bucketSpec.get
+
+      val enforceBucketingConfig = "hive.enforce.bucketing"
+      val enforceSortingConfig = "hive.enforce.sorting"
+
+      val message = s"Output Hive table ${table.identifier} is bucketed but Spark " +
+        "currently does NOT populate bucketed output which is compatible with Hive."
+
+      val hadoopConf = session.sessionState.newHadoopConf()
+      if (hadoopConf.get(enforceBucketingConfig, "true").toBoolean ||
+        hadoopConf.get(enforceSortingConfig, "true").toBoolean) {
+        throw new AnalysisException(message)
+      } else {
+        logWarning(message + s" Inserting data anyways since both $enforceBucketingConfig and " +
+          s"$enforceSortingConfig are set to false.")
+      }
+
+      return plan;
+  }
+}
+
 /**
  * Replaces generic operations with specific variants that are designed to work with Hive.
  *
