@@ -153,7 +153,6 @@ class DetermineTableStats(session: SparkSession) extends Rule[LogicalPlan] {
 class HiveBucketAnalysis(session: SparkSession) extends Rule[LogicalPlan] {
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     case InsertIntoTable(r: HiveTableRelation, partition, query, overwrite, ifPartitionNotExists)
-      // Inserting into partitioned table is not supported in Parquet/Orc data source (yet).
       if query.resolved && DDLUtils.isHiveTable(r.tableMeta) &&
         r.tableMeta.bucketSpec.isDefined =>
 
