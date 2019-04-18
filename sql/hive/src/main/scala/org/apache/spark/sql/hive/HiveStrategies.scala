@@ -152,7 +152,7 @@ class DetermineTableStats(session: SparkSession) extends Rule[LogicalPlan] {
 
 class HiveBucketAnalysis(session: SparkSession) extends Rule[LogicalPlan] {
   override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
-    case InsertIntoTable(r: HiveTableRelation, partition, query, overwrite, ifPartitionNotExists)
+    case InsertIntoTable(r: HiveTableRelation, _, query, _, _)
       if query.resolved && DDLUtils.isHiveTable(r.tableMeta) &&
         r.tableMeta.bucketSpec.isDefined =>
 
