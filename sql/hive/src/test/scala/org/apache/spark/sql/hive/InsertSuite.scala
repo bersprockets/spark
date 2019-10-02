@@ -543,8 +543,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
 
   Seq(
     ("orc", "spark.sql.hive.convertMetastoreParquet"),
-    ("parquet", "spark.sql.hive.convertMetastoreParquet")).map { case (fmt, key) =>
-      Seq("true", "false").map { native =>
+    ("parquet", "spark.sql.hive.convertMetastoreParquet")).foreach { case (fmt, key) =>
+      Seq("true", "false").foreach { native =>
         withSQLConf(key -> native) {
           testBucketedTable("INSERT should NOT fail if strict bucketing is NOT enforced " +
             s"(format=$fmt, native=$native)", fmt) {
@@ -561,19 +561,19 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
               val expectedSnippet = "is bucketed but Spark currently does NOT populate bucketed"
               withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "false") {
                 val msg = intercept[AnalysisException] {
-                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
                 }.getMessage
                 assert(msg.contains(expectedSnippet))
               }
               withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "true") {
                 val msg = intercept[AnalysisException] {
-                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
                 }.getMessage
                 assert(msg.contains(expectedSnippet))
               }
               withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "true") {
                 val msg = intercept[AnalysisException] {
-                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
                 }.getMessage
                 assert(msg.contains(expectedSnippet))
               }
