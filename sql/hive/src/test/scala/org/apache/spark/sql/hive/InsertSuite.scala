@@ -493,7 +493,8 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       }
   }
 
-  private def testBucketedTable(testName: String)(f: String => Unit): Unit = {
+  private def testBucketedTable(
+      testName: String, format: String = "TEXTFILE")(f: String => Unit): Unit = {
     test(s"Hive SerDe table - $testName") {
       val hiveTable = "hive_table"
 
@@ -505,29 +506,10 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
                |PARTITIONED BY (b INT, c INT)
                |CLUSTERED BY(a)
                |SORTED BY(a, d) INTO 256 BUCKETS
-               |STORED AS TEXTFILE
+               |STORED AS $format
             """.stripMargin)
           f(hiveTable)
         }
-      }
-    }
-  }
-
-  private def testBucketedParquetTable(testName: String)(f: String => Unit): Unit = {
-    test(s"Hive parquet converted table - $testName") {
-      val hiveTable = "hive_converted_parquet_table"
-
-      withTable(hiveTable) {
-        // do not specify any partitions so that Spark will convert the table to
-        // the parquet datasource at runtime
-        sql(
-          s"""
-             |CREATE TABLE $hiveTable (a INT, b INT, c INT)
-             |CLUSTERED BY(a)
-             |SORTED BY(a, b) INTO 256 BUCKETS
-             |STORED AS PARQUET
-          """.stripMargin)
-        f(hiveTable)
       }
     }
   }
@@ -559,34 +541,44 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
       }
   }
 
-  testBucketedParquetTable("INSERT should NOT fail if strict bucketing is NOT enforced") {
-    tableName =>
-      withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "false") {
-        sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3")
-        checkAnswer(sql(s"SELECT a, b, c FROM $tableName"), Row(1, 2, 3))
-      }
-  }
+  Seq(
+    ("orc", "spark.sql.hive.convertMetastoreParquet"),
+    ("parquet", "spark.sql.hive.convertMetastoreParquet")).map { case (fmt, key) =>
+      Seq("true", "false").map { native =>
+        withSQLConf(key -> native) {
+          testBucketedTable("INSERT should NOT fail if strict bucketing is NOT enforced " +
+            s"(format=$fmt, native=$native)", fmt) {
+            tableName =>
+              withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "false") {
+                sql(s"INSERT INTO TABLE $tableName SELECT 1, 4, 2 AS c, 3 AS b")
+                checkAnswer(sql(s"SELECT a, b, c, d FROM $tableName"), Row(1, 2, 3, 4))
+              }
+          }
 
-  testBucketedParquetTable("INSERT should fail if strict bucketing / sorting is enforced") {
-    tableName =>
-      val expectedSnippet = "is bucketed but Spark currently does NOT populate bucketed"
-      withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "false") {
-        val msg = intercept[AnalysisException] {
-          sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 4")
-        }.getMessage
-        assert(msg.contains(expectedSnippet))
-      }
-      withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "true") {
-        val msg = intercept[AnalysisException] {
-          sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3")
-        }.getMessage
-        assert(msg.contains(expectedSnippet))
-      }
-      withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "true") {
-        val msg = intercept[AnalysisException] {
-          sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3")
-        }.getMessage
-        assert(msg.contains(expectedSnippet))
+          testBucketedTable("INSERT should fail if strict bucketing / sorting is enforced " +
+            s"(format=$fmt, native=$native)", fmt) {
+            tableName =>
+              val expectedSnippet = "is bucketed but Spark currently does NOT populate bucketed"
+              withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "false") {
+                val msg = intercept[AnalysisException] {
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                }.getMessage
+                assert(msg.contains(expectedSnippet))
+              }
+              withSQLConf("hive.enforce.bucketing" -> "false", "hive.enforce.sorting" -> "true") {
+                val msg = intercept[AnalysisException] {
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                }.getMessage
+                assert(msg.contains(expectedSnippet))
+              }
+              withSQLConf("hive.enforce.bucketing" -> "true", "hive.enforce.sorting" -> "true") {
+                val msg = intercept[AnalysisException] {
+                  sql(s"INSERT INTO TABLE $tableName SELECT 1, 2, 3, 4")
+                }.getMessage
+                assert(msg.contains(expectedSnippet))
+              }
+          }
+        }
       }
   }
 
