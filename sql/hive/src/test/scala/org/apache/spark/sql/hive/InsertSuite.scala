@@ -542,7 +542,7 @@ class InsertSuite extends QueryTest with TestHiveSingleton with BeforeAndAfter
   }
 
   Seq(
-    ("orc", "spark.sql.hive.convertMetastoreParquet"),
+    ("orc", "spark.sql.hive.convertMetastoreOrc"),
     ("parquet", "spark.sql.hive.convertMetastoreParquet")).foreach { case (fmt, key) =>
       Seq("true", "false").foreach { native =>
         withSQLConf(key -> native) {
