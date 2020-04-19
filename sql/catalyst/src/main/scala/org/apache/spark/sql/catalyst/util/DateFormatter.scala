@@ -18,7 +18,7 @@
 package org.apache.spark.sql.catalyst.util
 
 import java.text.SimpleDateFormat
-import java.time.{LocalDate, ZonedDateTime, ZoneId}
+import java.time.{LocalDate, ZoneId}
 import java.util.{Date, Locale}
 
 import org.apache.commons.lang3.time.FastDateFormat
@@ -77,16 +77,14 @@ trait LegacyDateFormatter extends DateFormatter {
   }
 }
 
-class LegacyFastDateFormatter(pattern: String, locale: Locale, zoneId: ZoneId)
-    extends LegacyDateFormatter {
+class LegacyFastDateFormatter(pattern: String, locale: Locale) extends LegacyDateFormatter {
   @transient
   private lazy val fdf = FastDateFormat.getInstance(pattern, locale)
   override def parseToDate(s: String): Date = fdf.parse(s)
   override def formatDate(d: Date): String = fdf.format(d)
 }
 
-class LegacySimpleDateFormatter(pattern: String, locale: Locale, zoneId: ZoneId)
-    extends LegacyDateFormatter {
+class LegacySimpleDateFormatter(pattern: String, locale: Locale) extends LegacyDateFormatter {
   @transient
   private lazy val sdf = new SimpleDateFormat(pattern, locale)
   override def parseToDate(s: String): Date = sdf.parse(s)
@@ -120,9 +118,9 @@ object DateFormatter {
       legacyFormat: LegacyDateFormat): DateFormatter = {
     legacyFormat match {
       case FAST_DATE_FORMAT =>
-        new LegacyFastDateFormatter(pattern, locale, zoneId)
+        new LegacyFastDateFormatter(pattern, locale)
       case SIMPLE_DATE_FORMAT | LENIENT_SIMPLE_DATE_FORMAT =>
-        new LegacySimpleDateFormatter(pattern, locale, zoneId)
+        new LegacySimpleDateFormatter(pattern, locale)
     }
   }
 
