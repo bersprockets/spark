@@ -24,6 +24,7 @@ import org.apache.spark.sql.catalyst.plans.SQLHelper
 import org.apache.spark.sql.catalyst.util._
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.{getZoneId, localDateToDays}
 import org.apache.spark.sql.internal.SQLConf
+import org.apache.spark.sql.internal.SQLConf.LegacyBehaviorPolicy
 
 class DateFormatterSuite extends SparkFunSuite with SQLHelper {
   test("parsing dates") {
@@ -47,8 +48,8 @@ class DateFormatterSuite extends SparkFunSuite with SQLHelper {
   }
 
   test("roundtrip date -> days -> date") {
-    Seq("EXCEPTION", "LEGACY").foreach { parserPolicy =>
-      withSQLConf("spark.sql.legacy.timeParserPolicy" -> parserPolicy) {
+    LegacyBehaviorPolicy.values.foreach { parserPolicy =>
+      withSQLConf("spark.sql.legacy.timeParserPolicy" -> parserPolicy.toString) {
         Seq(
           "0050-01-01",
           "0953-02-02",
@@ -74,8 +75,8 @@ class DateFormatterSuite extends SparkFunSuite with SQLHelper {
   }
 
   test("roundtrip days -> date -> days") {
-    Seq("EXCEPTION", "LEGACY").foreach { parserPolicy =>
-      withSQLConf("spark.sql.legacy.timeParserPolicy" -> parserPolicy) {
+    LegacyBehaviorPolicy.values.foreach { parserPolicy =>
+      withSQLConf("spark.sql.legacy.timeParserPolicy" -> parserPolicy.toString) {
         Seq(
           -701265,
           -371419,
