@@ -64,41 +64,11 @@ class Iso8601DateFormatter(
 trait LegacyDateFormatter extends DateFormatter {
   def parseToDate(s: String): Date
   def formatDate(d: Date): String
-  def getZoneId: ZoneId
-
-  private val cutOffHybridJulianMillis = new Date(1582 - 1900, 9, 16).getTime
-/*  override def parse(s: String): Int = {
-    val resultingDate = parseToDate(s)
-    val millis = if (resultingDate.getTime < cutOffHybridJulianMillis) {
-      val zoned = ZonedDateTime.of(
-        resultingDate.getYear + 1900,
-        resultingDate.getMonth + 1,
-        resultingDate.getDate,
-        0,
-        0,
-        0,
-        0,
-        java.util.TimeZone.getTimeZone("UTC").toZoneId)
-      zoned.toInstant.toEpochMilli
-    } else {
-      resultingDate.getTime
-    }
-    val micros = DateTimeUtils.millisToMicros(millis)
-    DateTimeUtils.microsToDays(micros)
-  } */
 
   override def parse(s: String): Int = {
-    val resultingDate = parseToDate(s)
-    if (resultingDate.getTime < cutOffHybridJulianMillis) {
-      val localDate = LocalDate.of(
-        resultingDate.getYear + 1900,
-        resultingDate.getMonth + 1,
-        resultingDate.getDate)
-      localDateToDays(localDate)
-    } else {
-      val micros = DateTimeUtils.millisToMicros(resultingDate.getTime)
-      DateTimeUtils.microsToDays(micros)
-    }
+    val julianMicros = DateTimeUtils.millisToMicros(parseToDate(s).getTime)
+    val micros = RebaseDateTime.rebaseJulianToGregorianMicros(julianMicros)
+    DateTimeUtils.microsToDays(micros)
   }
 
   override def format(days: Int): String = {
@@ -111,7 +81,6 @@ class LegacyFastDateFormatter(pattern: String, locale: Locale, zoneId: ZoneId)
     extends LegacyDateFormatter {
   @transient
   private lazy val fdf = FastDateFormat.getInstance(pattern, locale)
-  override def getZoneId: ZoneId = zoneId
   override def parseToDate(s: String): Date = fdf.parse(s)
   override def formatDate(d: Date): String = fdf.format(d)
 }
@@ -120,7 +89,6 @@ class LegacySimpleDateFormatter(pattern: String, locale: Locale, zoneId: ZoneId)
     extends LegacyDateFormatter {
   @transient
   private lazy val sdf = new SimpleDateFormat(pattern, locale)
-  override def getZoneId: ZoneId = zoneId
   override def parseToDate(s: String): Date = sdf.parse(s)
   override def formatDate(d: Date): String = sdf.format(d)
 }

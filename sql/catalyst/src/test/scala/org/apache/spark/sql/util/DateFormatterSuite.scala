@@ -52,6 +52,7 @@ class DateFormatterSuite extends SparkFunSuite with SQLHelper {
         Seq(
           "0050-01-01",
           "0953-02-02",
+          "1582-10-15",
           "1423-03-08",
           "1969-12-31",
           "1972-08-25",
