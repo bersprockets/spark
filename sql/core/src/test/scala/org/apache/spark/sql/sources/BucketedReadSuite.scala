@@ -118,7 +118,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
     // This test verifies parts of the plan. Disable whole stage codegen.
     withSQLConf(SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> "false") {
       val bucketedDataFrame = spark.table("bucketed_table").select("i", "j", "k")
-      val BucketSpec(numBuckets, bucketColumnNames, _) = bucketSpec
+      val BucketSpec(numBuckets, bucketColumnNames, _, _) = bucketSpec
       // Limit: bucket pruning only works when the bucket column has one and only one column
       assert(bucketColumnNames.length == 1)
       val bucketColumnIndex = bucketedDataFrame.schema.fieldIndex(bucketColumnNames.head)
