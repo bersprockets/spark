@@ -176,7 +176,7 @@ case class BucketSpec(
     numBuckets: Int,
     bucketColumnNames: Seq[String],
     sortColumnNames: Seq[String],
-    originalSortColumns: Seq[(String, SortDirection)] = Seq.empty) {
+    allSortColumns: Seq[(String, SortDirection)] = Seq.empty) {
   def conf: SQLConf = SQLConf.get
 
   if (numBuckets <= 0 || numBuckets > conf.bucketingMaxBuckets) {

@@ -1091,9 +1091,9 @@ private[hive] object HiveClientImpl extends Logging {
         hiveTable.setNumBuckets(bucketSpec.numBuckets)
         hiveTable.setBucketCols(bucketSpec.bucketColumnNames.toList.asJava)
 
-        if (bucketSpec.originalSortColumns.nonEmpty) {
+        if (bucketSpec.allSortColumns.nonEmpty) {
           hiveTable.setSortCols(
-            bucketSpec.originalSortColumns.map { case (col, sortOrder) =>
+            bucketSpec.allSortColumns.map { case (col, sortOrder) =>
               val hiveSortOrder = if (sortOrder == Ascending) {
                 HIVE_COLUMN_ORDER_ASC
               } else {
