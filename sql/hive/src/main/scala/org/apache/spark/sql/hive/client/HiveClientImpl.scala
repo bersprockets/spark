@@ -35,7 +35,7 @@ import org.apache.hadoop.hive.metastore.{IMetaStoreClient, TableType => HiveTabl
 import org.apache.hadoop.hive.metastore.api.{Database => HiveDatabase, Table => MetaStoreApiTable, _}
 import org.apache.hadoop.hive.ql.Driver
 import org.apache.hadoop.hive.ql.metadata.{Hive, HiveException, Partition => HivePartition, Table => HiveTable}
-import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.HIVE_COLUMN_ORDER_ASC
+import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.{HIVE_COLUMN_ORDER_ASC, HIVE_COLUMN_ORDER_DESC}
 import org.apache.hadoop.hive.ql.processors._
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.hive.serde.serdeConstants
@@ -51,7 +51,7 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchPartitionException}
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.catalog.CatalogTypes.TablePartitionSpec
-import org.apache.spark.sql.catalyst.expressions.Expression
+import org.apache.spark.sql.catalyst.expressions.{Ascending, Descending, Expression}
 import org.apache.spark.sql.catalyst.parser.{CatalystSqlParser, ParseException}
 import org.apache.spark.sql.connector.catalog.SupportsNamespaces._
 import org.apache.spark.sql.execution.QueryExecutionException
@@ -438,19 +438,21 @@ private[hive] class HiveClientImpl(
 
     val bucketSpec = if (h.getNumBuckets > 0) {
       val sortColumnOrders = h.getSortCols.asScala
+      // we need the original sort columns for when we write back to the metastore
+      val allSortCols = sortColumnOrders.map { sco =>
+        val order = if (sco.getOrder == HIVE_COLUMN_ORDER_ASC) {
+          Ascending
+        } else {
+          Descending
+        }
+        (sco.getCol, order)
+      }
       // Currently Spark only supports columns to be sorted in ascending order
       // but Hive can support both ascending and descending order. If all the columns
       // are sorted in ascending order, only then propagate the sortedness information
       // to downstream processing / optimizations in Spark
       // TODO: In future we can have Spark support columns sorted in descending order
-      val allAscendingSorted = sortColumnOrders.forall(_.getOrder == HIVE_COLUMN_ORDER_ASC)
-
-      val sortColumnNames = if (allAscendingSorted) {
-        sortColumnOrders.map(_.getCol)
-      } else {
-        Seq.empty
-      }
-      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColumnNames))
+      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, allSortCols))
     } else {
       None
     }
@@ -1081,12 +1083,16 @@ private[hive] object HiveClientImpl extends Logging {
         hiveTable.setNumBuckets(bucketSpec.numBuckets)
         hiveTable.setBucketCols(bucketSpec.bucketColumnNames.toList.asJava)
 
-        if (bucketSpec.sortColumnNames.nonEmpty) {
+        if (bucketSpec.allSortColumns.nonEmpty) {
           hiveTable.setSortCols(
-            bucketSpec.sortColumnNames
-              .map(col => new Order(col, HIVE_COLUMN_ORDER_ASC))
-              .toList
-              .asJava
+            bucketSpec.allSortColumns.map { case (col, sortOrder) =>
+              val hiveSortOrder = if (sortOrder == Ascending) {
+                HIVE_COLUMN_ORDER_ASC
+              } else {
+                HIVE_COLUMN_ORDER_DESC
+              }
+              new Order(col, hiveSortOrder)
+            }.toList.asJava
           )
         }
       case _ =>

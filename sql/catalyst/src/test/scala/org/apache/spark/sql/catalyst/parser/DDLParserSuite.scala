@@ -22,7 +22,7 @@ import java.util.Locale
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.analysis.{AnalysisTest, GlobalTempView, LocalTempView, PersistedView, UnresolvedAttribute, UnresolvedNamespace, UnresolvedRelation, UnresolvedStar, UnresolvedTable, UnresolvedTableOrView}
 import org.apache.spark.sql.catalyst.catalog.{ArchiveResource, BucketSpec, FileResource, FunctionResource, FunctionResourceType, JarResource}
-import org.apache.spark.sql.catalyst.expressions.{EqualTo, Literal}
+import org.apache.spark.sql.catalyst.expressions.{Ascending, EqualTo, Literal}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.connector.catalog.TableChange.ColumnPosition.{after, first}
 import org.apache.spark.sql.connector.expressions.{ApplyTransform, BucketTransform, DaysTransform, FieldReference, HoursTransform, IdentityTransform, LiteralValue, MonthsTransform, Transform, YearsTransform}
@@ -178,7 +178,7 @@ class DDLParserSuite extends AnalysisTest {
       Seq("my_tab"),
       Some(new StructType().add("a", IntegerType).add("b", StringType)),
       Seq.empty[Transform],
-      Some(BucketSpec(5, Seq("a"), Seq("b"))),
+      Some(BucketSpec(5, Seq("a"), Seq(("b", Ascending)))),
       Map.empty[String, String],
       Some("parquet"),
       Map.empty[String, String],

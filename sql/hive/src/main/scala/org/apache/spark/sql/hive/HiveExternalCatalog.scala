@@ -447,8 +447,8 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     }
 
     if (bucketSpec.isDefined) {
-      val BucketSpec(numBuckets, bucketColumnNames, sortColumnNames) = bucketSpec.get
-
+      val BucketSpec(numBuckets, bucketColumnNames, _) = bucketSpec.get
+      val sortColumnNames = bucketSpec.get.sortColumnNames
       properties.put(DATASOURCE_SCHEMA_NUMBUCKETS, numBuckets.toString)
       properties.put(DATASOURCE_SCHEMA_NUMBUCKETCOLS, bucketColumnNames.length.toString)
       bucketColumnNames.zipWithIndex.foreach { case (bucketCol, index) =>
@@ -1423,10 +1423,12 @@ object HiveExternalCatalog {
 
   private def getBucketSpecFromTableProperties(metadata: CatalogTable): Option[BucketSpec] = {
     metadata.properties.get(DATASOURCE_SCHEMA_NUMBUCKETS).map { numBuckets =>
+      val sortColNames =
+        getColumnNamesByType(metadata.properties, "sort", "sorting columns")
       BucketSpec(
         numBuckets.toInt,
         getColumnNamesByType(metadata.properties, "bucket", "bucketing columns"),
-        getColumnNamesByType(metadata.properties, "sort", "sorting columns"))
+        sortColNames.map((_ -> Ascending)))
     }
   }
 

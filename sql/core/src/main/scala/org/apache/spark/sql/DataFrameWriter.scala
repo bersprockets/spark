@@ -25,7 +25,7 @@ import org.apache.spark.annotation.Stable
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{EliminateSubqueryAliases, NoSuchTableException, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.catalog._
-import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.catalyst.expressions.{Ascending, Literal}
 import org.apache.spark.sql.catalyst.plans.logical.{AppendData, CreateTableAsSelect, CreateTableAsSelectStatement, InsertIntoStatement, LogicalPlan, OverwriteByExpression, OverwritePartitionsDynamic, ReplaceTableAsSelectStatement}
 import org.apache.spark.sql.connector.catalog.{CatalogPlugin, CatalogV2Implicits, CatalogV2Util, Identifier, SupportsCatalogOptions, Table, TableCatalog, TableProvider, V1Table}
 import org.apache.spark.sql.connector.catalog.TableCapability._
@@ -507,7 +507,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
     }
 
     numBuckets.map { n =>
-      BucketSpec(n, bucketColumnNames.get, sortColumnNames.getOrElse(Nil))
+      BucketSpec(n, bucketColumnNames.get, sortColumnNames.getOrElse(Nil).map((_, Ascending)))
     }
   }
 

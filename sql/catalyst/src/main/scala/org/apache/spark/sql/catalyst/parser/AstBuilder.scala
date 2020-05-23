@@ -2336,7 +2336,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
               }
             }
 
-            orderedIdCtx.ident.getText
+            (orderedIdCtx.ident.getText, Ascending)
           })
   }
 
