@@ -440,7 +440,7 @@ private[hive] class HiveClientImpl(
       val sortColumnOrders = h.getSortCols.asScala
 
       // we need the original sort columns for when we write back to the metastore
-      val origSortCols = sortColumnOrders.map { sco =>
+      val allSortCols = sortColumnOrders.map { sco =>
         val order = if (sco.getOrder == HIVE_COLUMN_ORDER_ASC) {
           Ascending
         } else {
@@ -460,7 +460,7 @@ private[hive] class HiveClientImpl(
       } else {
         Seq.empty
       }
-      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColumnNames, origSortCols))
+      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColumnNames, allSortCols))
     } else {
       None
     }

@@ -1423,10 +1423,18 @@ object HiveExternalCatalog {
 
   private def getBucketSpecFromTableProperties(metadata: CatalogTable): Option[BucketSpec] = {
     metadata.properties.get(DATASOURCE_SCHEMA_NUMBUCKETS).map { numBuckets =>
+      val bucketCols = getColumnNamesByType(metadata.properties, "bucket", "bucketing columns")
+      val sortCols = getColumnNamesByType(metadata.properties, "sort", "sorting columns")
+      val allSortCols = if (metadata.bucketSpec.exists(_.allSortColumns.size > 0)) {
+        metadata.bucketSpec.get.allSortColumns
+      } else {
+        sortCols.map((_, Ascending))
+      }
       BucketSpec(
         numBuckets.toInt,
         getColumnNamesByType(metadata.properties, "bucket", "bucketing columns"),
-        getColumnNamesByType(metadata.properties, "sort", "sorting columns"))
+        getColumnNamesByType(metadata.properties, "sort", "sorting columns"),
+        allSortCols)
     }
   }
 
