@@ -507,7 +507,11 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
     }
 
     numBuckets.map { n =>
-      BucketSpec(n, bucketColumnNames.get, sortColumnNames.getOrElse(Nil).map((_, Ascending)))
+      BucketSpec(
+        n,
+        bucketColumnNames.get,
+        sortColumnNames.getOrElse(Nil),
+        sortColumnNames.getOrElse(Nil).map(_ => Ascending.sql))
     }
   }
 

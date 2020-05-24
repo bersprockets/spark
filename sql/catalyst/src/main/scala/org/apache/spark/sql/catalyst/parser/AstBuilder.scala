@@ -2323,21 +2323,23 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * Create a [[BucketSpec]].
    */
   override def visitBucketSpec(ctx: BucketSpecContext): BucketSpec = withOrigin(ctx) {
+    val sortColNames = Option(ctx.orderedIdentifierList)
+      .toSeq
+      .flatMap(_.orderedIdentifier.asScala)
+      .map { orderedIdCtx =>
+        Option(orderedIdCtx.ordering).map(_.getText).foreach { dir =>
+          if (dir.toLowerCase(Locale.ROOT) != "asc") {
+            operationNotAllowed(s"Column ordering must be ASC, was '$dir'", ctx)
+          }
+        }
+
+        orderedIdCtx.ident.getText
+      }
     BucketSpec(
       ctx.INTEGER_VALUE.getText.toInt,
       visitIdentifierList(ctx.identifierList),
-      Option(ctx.orderedIdentifierList)
-          .toSeq
-          .flatMap(_.orderedIdentifier.asScala)
-          .map { orderedIdCtx =>
-            Option(orderedIdCtx.ordering).map(_.getText).foreach { dir =>
-              if (dir.toLowerCase(Locale.ROOT) != "asc") {
-                operationNotAllowed(s"Column ordering must be ASC, was '$dir'", ctx)
-              }
-            }
-
-            (orderedIdCtx.ident.getText, Ascending)
-          })
+      sortColNames,
+      sortColNames.map(_ => Ascending.sql))
   }
 
   /**

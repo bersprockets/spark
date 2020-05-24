@@ -178,7 +178,7 @@ class DDLParserSuite extends AnalysisTest {
       Seq("my_tab"),
       Some(new StructType().add("a", IntegerType).add("b", StringType)),
       Seq.empty[Transform],
-      Some(BucketSpec(5, Seq("a"), Seq(("b", Ascending)))),
+      Some(BucketSpec(5, Seq("a"), Seq("b"), Seq(Ascending.sql))),
       Map.empty[String, String],
       Some("parquet"),
       Map.empty[String, String],

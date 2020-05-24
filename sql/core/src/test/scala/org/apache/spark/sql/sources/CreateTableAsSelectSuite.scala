@@ -215,7 +215,7 @@ class CreateTableAsSelectSuite extends DataSourceTest with SharedSparkSession {
          """.stripMargin
       )
       val table = catalog.getTableMetadata(TableIdentifier("t"))
-      assert(table.bucketSpec == Option(BucketSpec(5, Seq("a"), Seq("b"))))
+      assert(table.bucketSpec == Option(BucketSpec(5, Seq("a"), Seq("b"), Seq("ASC"))))
     }
   }
 
@@ -255,7 +255,7 @@ class CreateTableAsSelectSuite extends DataSourceTest with SharedSparkSession {
         withTable("t") {
           sql(createTableSql(numBuckets))
           val table = catalog.getTableMetadata(TableIdentifier("t"))
-          assert(table.bucketSpec == Option(BucketSpec(numBuckets, Seq("a"), Seq("b"))))
+          assert(table.bucketSpec == Option(BucketSpec(numBuckets, Seq("a"), Seq("b"), Seq("ASC"))))
         }
       })
 

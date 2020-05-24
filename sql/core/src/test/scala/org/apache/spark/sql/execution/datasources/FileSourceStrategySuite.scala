@@ -631,7 +631,7 @@ class FileSourceStrategySuite extends QueryTest with SharedSparkSession with Pre
         case l @ LogicalRelation(r: HadoopFsRelation, _, _, _) =>
           l.copy(relation =
             r.copy(bucketSpec =
-              Some(BucketSpec(numBuckets = buckets, "c1" :: Nil, Nil)))(r.sparkSession))
+              Some(BucketSpec(numBuckets = buckets, "c1" :: Nil, Nil, Nil)))(r.sparkSession))
       }
       Dataset.ofRows(spark, bucketed)
     } else {

@@ -327,7 +327,7 @@ abstract class ExternalCatalogSuite extends SparkFunSuite with BeforeAndAfterEac
         .add("WoRLd", "int", nullable = true),
       provider = Some(defaultProvider),
       partitionColumnNames = Seq("WoRLd"),
-      bucketSpec = Some(BucketSpec(4, Seq("HelLo"), Nil)))
+      bucketSpec = Some(BucketSpec(4, Seq("HelLo"), Nil, Nil)))
     catalog.createTable(tbl, ignoreIfExists = false)
 
     val readBack = catalog.getTable("db1", "tbl")
@@ -1009,7 +1009,7 @@ abstract class CatalogTestUtils {
         .add("b", "string"),
       provider = Some(defaultProvider),
       partitionColumnNames = Seq("a", "b"),
-      bucketSpec = Some(BucketSpec(4, Seq("col1"), Nil)))
+      bucketSpec = Some(BucketSpec(4, Seq("col1"), Nil, Nil)))
   }
 
   def newView(

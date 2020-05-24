@@ -162,7 +162,6 @@ case class CatalogTablePartition(
   }
 }
 
-
 /**
  * A container for bucketing information.
  * Bucketing is a technology for decomposing data sets into more manageable parts, and the number
@@ -170,15 +169,18 @@ case class CatalogTablePartition(
  *
  * @param numBuckets number of buckets.
  * @param bucketColumnNames the names of the columns that used to generate the bucket id.
- * @param allSortColumns the names and orders of the columns that used to sort data in each bucket.
+ * @param allSortColumnNames the names all columns that used to sort data in each bucket.
+ * @param sortDirections the sort directions of the sort columns
  */
 case class BucketSpec(
     numBuckets: Int,
     bucketColumnNames: Seq[String],
-    allSortColumns: Seq[(String, SortDirection)]) {
+    allSortColumnNames: Seq[String],
+    sortDirections: Seq[String]) {
   def conf: SQLConf = SQLConf.get
 
-  val sortColumnNames = allSortColumns.filter(_._2 == Ascending).map(_._1)
+  val sortColumnNames = allSortColumnNames.zip(sortDirections)
+    .filter(_._2 == Ascending.sql).map(_._1)
 
   if (numBuckets <= 0 || numBuckets > conf.bucketingMaxBuckets) {
     throw new AnalysisException(

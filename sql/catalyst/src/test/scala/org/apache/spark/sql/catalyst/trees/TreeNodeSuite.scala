@@ -458,12 +458,13 @@ class TreeNodeSuite extends SparkFunSuite with SQLHelper {
 
     // Converts BucketSpec to JSON
     assertJSON(
-      BucketSpec(1, Seq("bucket"), Seq(("sort", Ascending))),
+      BucketSpec(1, Seq("bucket"), Seq("sort"), Seq(Ascending.sql)),
       JObject(
         "product-class" -> classOf[BucketSpec].getName,
         "numBuckets" -> 1,
         "bucketColumnNames" -> "[bucket]",
-        "sortColumnNames" -> "[sort]"))
+        "allSortColumnNames" -> "[sort]",
+        "sortDirections" -> "[ASC]"))
 
     // Converts WindowFrame to JSON
     assertJSON(

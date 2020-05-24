@@ -281,7 +281,7 @@ private[sql] object V2SessionCatalog {
         identityCols += col
 
       case BucketTransform(numBuckets, FieldReference(Seq(col))) =>
-        bucketSpec = Some(BucketSpec(numBuckets, col :: Nil, Nil))
+        bucketSpec = Some(BucketSpec(numBuckets, col :: Nil, Nil, Nil))
 
       case transform =>
         throw new UnsupportedOperationException(

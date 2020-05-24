@@ -439,20 +439,20 @@ private[hive] class HiveClientImpl(
     val bucketSpec = if (h.getNumBuckets > 0) {
       val sortColumnOrders = h.getSortCols.asScala
       // we need the original sort columns for when we write back to the metastore
-      val allSortCols = sortColumnOrders.map { sco =>
+      val (sortColNames, sortColDirections) = sortColumnOrders.map { sco =>
         val order = if (sco.getOrder == HIVE_COLUMN_ORDER_ASC) {
           Ascending
         } else {
           Descending
         }
-        (sco.getCol, order)
-      }
+        (sco.getCol, order.sql)
+      }.unzip
       // Currently Spark only supports columns to be sorted in ascending order
       // but Hive can support both ascending and descending order. If all the columns
       // are sorted in ascending order, only then propagate the sortedness information
       // to downstream processing / optimizations in Spark
       // TODO: In future we can have Spark support columns sorted in descending order
-      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, allSortCols))
+      Option(BucketSpec(h.getNumBuckets, h.getBucketCols.asScala, sortColNames, sortColDirections))
     } else {
       None
     }
@@ -1083,15 +1083,16 @@ private[hive] object HiveClientImpl extends Logging {
         hiveTable.setNumBuckets(bucketSpec.numBuckets)
         hiveTable.setBucketCols(bucketSpec.bucketColumnNames.toList.asJava)
 
-        if (bucketSpec.allSortColumns.nonEmpty) {
+        if (bucketSpec.allSortColumnNames.nonEmpty) {
           hiveTable.setSortCols(
-            bucketSpec.allSortColumns.map { case (col, sortOrder) =>
-              val hiveSortOrder = if (sortOrder == Ascending) {
+            bucketSpec.allSortColumnNames.zip(bucketSpec.sortDirections)
+              .map { case (colName, dir) =>
+              val hiveSortOrder = if (dir == Ascending.sql) {
                 HIVE_COLUMN_ORDER_ASC
               } else {
                 HIVE_COLUMN_ORDER_DESC
               }
-              new Order(col, hiveSortOrder)
+              new Order(colName, hiveSortOrder)
             }.toList.asJava
           )
         }

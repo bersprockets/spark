@@ -447,7 +447,7 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     }
 
     if (bucketSpec.isDefined) {
-      val BucketSpec(numBuckets, bucketColumnNames, _) = bucketSpec.get
+      val BucketSpec(numBuckets, bucketColumnNames, _, _) = bucketSpec.get
       val sortColumnNames = bucketSpec.get.sortColumnNames
       properties.put(DATASOURCE_SCHEMA_NUMBUCKETS, numBuckets.toString)
       properties.put(DATASOURCE_SCHEMA_NUMBUCKETCOLS, bucketColumnNames.length.toString)
@@ -1428,7 +1428,8 @@ object HiveExternalCatalog {
       BucketSpec(
         numBuckets.toInt,
         getColumnNamesByType(metadata.properties, "bucket", "bucketing columns"),
-        sortColNames.map((_ -> Ascending)))
+        sortColNames,
+        sortColNames.map(_ => Ascending.sql))
     }
   }
 

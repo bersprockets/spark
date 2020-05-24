@@ -69,7 +69,7 @@ abstract class BucketedWriteSuite extends QueryTest with SQLTestUtils {
         withTable("t") {
           df.write.bucketBy(numBuckets, "i").saveAsTable("t")
           val table = catalog.getTableMetadata(TableIdentifier("t"))
-          assert(table.bucketSpec == Option(BucketSpec(numBuckets, Seq("i"), Seq())))
+          assert(table.bucketSpec == Option(BucketSpec(numBuckets, Seq("i"), Seq(), Seq())))
         }
       })
 

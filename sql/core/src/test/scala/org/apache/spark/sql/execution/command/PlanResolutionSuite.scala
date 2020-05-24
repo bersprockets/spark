@@ -232,7 +232,7 @@ class PlanResolutionSuite extends AnalysisTest {
       storage = CatalogStorageFormat.empty,
       schema = new StructType().add("a", IntegerType).add("b", StringType),
       provider = Some("parquet"),
-      bucketSpec = Some(BucketSpec(5, Seq("a"), Seq("b")))
+      bucketSpec = Some(BucketSpec(5, Seq("a"), Seq("b"), Seq("ASC")))
     )
 
     parseAndResolve(query) match {

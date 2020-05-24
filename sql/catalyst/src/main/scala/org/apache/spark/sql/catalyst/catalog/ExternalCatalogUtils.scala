@@ -186,19 +186,14 @@ object CatalogUtils {
       tableCols: Seq[String],
       bucketSpec: BucketSpec,
       resolver: Resolver): BucketSpec = {
-    val BucketSpec(numBuckets, bucketColumnNames, allSortColumns) = bucketSpec
-    val sortColumnNames = allSortColumns.map(_._1)
+    val BucketSpec(numBuckets, bucketColumnNames, allSortColumnNames, sortDirections) = bucketSpec
     val normalizedBucketCols = bucketColumnNames.map { colName =>
       normalizeColumnName(tableName, tableCols, colName, "bucket", resolver)
     }
-    val normalizedSortColNames = sortColumnNames.map { colName =>
+    val normalizedSortColNames = allSortColumnNames.map { colName =>
       normalizeColumnName(tableName, tableCols, colName, "sort", resolver)
     }
-    val normalizedSortCols =
-      normalizedSortColNames.zip(allSortColumns).map { case (normalizedName, (_, direction)) =>
-        (normalizedName, direction)
-    }
-    BucketSpec(numBuckets, normalizedBucketCols, normalizedSortCols)
+    BucketSpec(numBuckets, normalizedBucketCols, normalizedSortColNames, sortDirections)
   }
 
   /**

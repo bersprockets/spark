@@ -964,7 +964,7 @@ abstract class DDLSuite extends QueryTest with SQLTestUtils {
       assert(table.tableType == CatalogTableType.MANAGED)
       assert(table.provider == Some("parquet"))
       assert(table.schema == new StructType().add("a", IntegerType).add("b", IntegerType))
-      assert(table.bucketSpec == Some(BucketSpec(5, Seq("a"), Seq("b"))))
+      assert(table.bucketSpec == Some(BucketSpec(5, Seq("a"), Seq("b"), Seq("ASC"))))
     }
   }
 
