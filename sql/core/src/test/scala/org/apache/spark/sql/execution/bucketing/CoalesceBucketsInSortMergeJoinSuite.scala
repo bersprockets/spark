@@ -60,7 +60,7 @@ class CoalesceBucketsInSortMergeJoinSuite extends SQLTestUtils with SharedSparkS
       location = new InMemoryFileIndex(spark, Nil, Map.empty, None),
       partitionSchema = PartitionSpec.emptySpec.partitionColumns,
       dataSchema = StructType.fromAttributes(setting.cols),
-      bucketSpec = Some(BucketSpec(setting.numBuckets, setting.cols.map(_.name), Nil)),
+      bucketSpec = Some(BucketSpec(setting.numBuckets, setting.cols.map(_.name), Nil, Nil)),
       fileFormat = new ParquetFileFormat(),
       options = Map.empty)(spark)
     FileSourceScanExec(relation, setting.cols, relation.dataSchema, Nil, None, None, Nil, None)

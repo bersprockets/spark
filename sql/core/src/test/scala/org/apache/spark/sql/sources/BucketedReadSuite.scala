@@ -50,6 +50,8 @@ class BucketedReadWithoutHiveSupportSuite extends BucketedReadSuite with SharedS
 abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
   import testImplicits._
 
+  val ASC = Ascending.sql
+
   protected override def beforeAll(): Unit = {
     super.beforeAll()
     spark.sessionState.conf.setConf(SQLConf.LEGACY_BUCKETED_TABLE_SCAN_OUTPUT_ORDERING, true)
@@ -528,7 +530,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
     // but those files combined together are not globally sorted. Given that,
     // the RDD partition will not be sorted even if the relation has sort columns set
     // Therefore, we still need to keep the Sort in both sides.
-    val bucketSpec = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq("ASC", "ASC")))
+    val bucketSpec = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC)))
 
     val bucketedTableTestSpecLeft1 = BucketedTableTestSpec(
       bucketSpec, numPartitions = 50, expectedShuffle = false, expectedSort = true)
@@ -572,8 +574,8 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
   }
 
   test("avoid shuffle and sort when sort columns are a super set of join keys") {
-    val bucketSpecLeft = Some(BucketSpec(8, Seq("i"), Seq("i", "j"), Seq("ASC", "ASC")))
-    val bucketSpecRight = Some(BucketSpec(8, Seq("i"), Seq("i", "k"), Seq("ASC", "ASC")))
+    val bucketSpecLeft = Some(BucketSpec(8, Seq("i"), Seq("i", "j"), Seq(ASC, ASC)))
+    val bucketSpecRight = Some(BucketSpec(8, Seq("i"), Seq("i", "k"), Seq(ASC, ASC)))
     val bucketedTableTestSpecLeft = BucketedTableTestSpec(
       bucketSpecLeft, numPartitions = 1, expectedShuffle = false, expectedSort = false)
     val bucketedTableTestSpecRight = BucketedTableTestSpec(
@@ -586,8 +588,8 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
   }
 
   test("only sort one side when sort columns are different") {
-    val bucketSpecLeft = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq("ASC", "ASC")))
-    val bucketSpecRight = Some(BucketSpec(8, Seq("i", "j"), Seq("k"), Seq("ASC")))
+    val bucketSpecLeft = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC)))
+    val bucketSpecRight = Some(BucketSpec(8, Seq("i", "j"), Seq("k"), Seq(ASC)))
     val bucketedTableTestSpecLeft = BucketedTableTestSpec(
       bucketSpecLeft, numPartitions = 1, expectedShuffle = false, expectedSort = false)
     val bucketedTableTestSpecRight = BucketedTableTestSpec(
@@ -600,8 +602,8 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
   }
 
   test("only sort one side when sort columns are same but their ordering is different") {
-    val bucketSpecLeft = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq("ASC", "ASC")))
-    val bucketSpecRight = Some(BucketSpec(8, Seq("i", "j"), Seq("j", "i"), Seq("ASC", "ASC")))
+    val bucketSpecLeft = Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC)))
+    val bucketSpecRight = Some(BucketSpec(8, Seq("i", "j"), Seq("j", "i"), Seq(ASC, ASC)))
     val bucketedTableTestSpecLeft = BucketedTableTestSpec(
       bucketSpecLeft, numPartitions = 1, expectedShuffle = false, expectedSort = false)
     val bucketedTableTestSpecRight = BucketedTableTestSpec(
@@ -668,7 +670,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
   }
 
   test("SPARK-17698 Join predicates should not contain filter clauses") {
-    val bucketSpec = Some(BucketSpec(8, Seq("i"), Seq("i"), Seq("ASC")))
+    val bucketSpec = Some(BucketSpec(8, Seq("i"), Seq("i"), Seq(ASC)))
     val bucketedTableTestSpecLeft = BucketedTableTestSpec(
       bucketSpec, numPartitions = 1, expectedShuffle = false, expectedSort = false)
     val bucketedTableTestSpecRight = BucketedTableTestSpec(
@@ -688,7 +690,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
 
   test("SPARK-19122 Re-order join predicates if they match with the child's output partitioning") {
     val bucketedTableTestSpec = BucketedTableTestSpec(
-      Some(BucketSpec(8, Seq("i", "j", "k"), Seq("i", "j", "k"), Seq("ASC", "ASC", "ASC"))),
+      Some(BucketSpec(8, Seq("i", "j", "k"), Seq("i", "j", "k"), Seq(ASC, ASC, ASC))),
       numPartitions = 1,
       expectedShuffle = false,
       expectedSort = false)
@@ -717,7 +719,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
 
     // join predicates is a super set of child's partitioning columns
     val bucketedTableTestSpec1 =
-      BucketedTableTestSpec(Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq("ASC", "ASC"))),
+      BucketedTableTestSpec(Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))),
         numPartitions = 1)
     testBucketing(
       bucketedTableTestSpecLeft = bucketedTableTestSpec1,
@@ -728,7 +730,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
     // child's partitioning columns is a super set of join predicates
     val bucketedTableTestSpec2 =
       BucketedTableTestSpec(Some(BucketSpec(8, Seq("i", "j", "k"), Seq("i", "j", "k"),
-        Seq("ASC", "ASC", "ASC"))), numPartitions = 1)
+        Seq(ASC, ASC, ASC))), numPartitions = 1)
     testBucketing(
       bucketedTableTestSpecLeft = bucketedTableTestSpec2,
       bucketedTableTestSpecRight = bucketedTableTestSpec2,
@@ -738,7 +740,7 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
     // set of child's partitioning columns != set join predicates (despite the lengths of the
     // sets are same)
     val bucketedTableTestSpec3 =
-      BucketedTableTestSpec(Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq("ASC", "ASC"))),
+      BucketedTableTestSpec(Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))),
         numPartitions = 1)
     testBucketing(
       bucketedTableTestSpecLeft = bucketedTableTestSpec3,
@@ -882,13 +884,13 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
       // The side with bucketedTableTestSpec1 will be coalesced to have 4 output partitions.
       // Currently, sort will be introduced for the side that is coalesced.
       val testSpec1 = BucketedTableTestSpec(
-        Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"))),
+        Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))),
         numPartitions = 1,
         expectedShuffle = false,
         expectedSort = true,
         expectedNumOutputPartitions = Some(4))
       val testSpec2 = BucketedTableTestSpec(
-        Some(BucketSpec(4, Seq("i", "j"), Seq("i", "j"))),
+        Some(BucketSpec(4, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))),
         numPartitions = 1,
         expectedShuffle = false,
         expectedSort = false,
@@ -917,9 +919,11 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
       // Coalescing buckets is disabled by a config.
       run(
         BucketedTableTestSpec(
-          Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = false),
+          Some(BucketSpec(
+            8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = false),
         BucketedTableTestSpec(
-          Some(BucketSpec(4, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = true))
+          Some(BucketSpec(
+            4, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = true))
     }
 
     withSQLConf(
@@ -929,9 +933,11 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
       // is greater than max allowed (2).
       run(
         BucketedTableTestSpec(
-          Some(BucketSpec(12, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = false),
+          Some(BucketSpec(
+            12, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = false),
         BucketedTableTestSpec(
-          Some(BucketSpec(4, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = true))
+          Some(BucketSpec(
+            4, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = true))
     }
 
     withSQLConf(SQLConf.COALESCE_BUCKETS_IN_SORT_MERGE_JOIN_ENABLED.key -> "true") {
@@ -939,9 +945,11 @@ abstract class BucketedReadSuite extends QueryTest with SQLTestUtils {
         // Coalescing buckets is not applied because the bigger number of buckets (8) is not
         // divisible by the smaller number of buckets (7).
         BucketedTableTestSpec(
-          Some(BucketSpec(8, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = false),
+          Some(BucketSpec(
+            8, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = false),
         BucketedTableTestSpec(
-          Some(BucketSpec(7, Seq("i", "j"), Seq("i", "j"))), expectedShuffle = true))
+          Some(
+            BucketSpec(7, Seq("i", "j"), Seq("i", "j"), Seq(ASC, ASC))), expectedShuffle = true))
     }
   }
 
