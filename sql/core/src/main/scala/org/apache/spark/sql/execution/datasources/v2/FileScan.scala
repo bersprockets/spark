@@ -67,6 +67,8 @@ trait FileScan extends Scan
    */
   def dataFilters: Seq[Expression]
 
+  def pushedFilters: Array[Filter]
+
   /**
    * Create a new `FileScan` instance from the current one
    * with different `partitionFilters` and `dataFilters`
@@ -86,9 +88,8 @@ trait FileScan extends Scan
 
   override def equals(obj: Any): Boolean = obj match {
     case f: FileScan =>
-      fileIndex == f.fileIndex && readSchema == f.readSchema
-        ExpressionSet(partitionFilters) == ExpressionSet(f.partitionFilters) &&
-        ExpressionSet(dataFilters) == ExpressionSet(f.dataFilters)
+      fileIndex == f.fileIndex && readSchema == f.readSchema &&
+        pushedFilters.toList == f.pushedFilters.toList
 
     case _ => false
   }
@@ -174,6 +175,9 @@ trait FileScan extends Scan
         val compressionFactor = sparkSession.sessionState.conf.fileCompressionFactor
         val size = (compressionFactor * fileIndex.sizeInBytes).toLong
         OptionalLong.of(size)
+        // val ret = OptionalLong.of(size)
+        // print(s"Size of ${fileIndex.allFiles()(0)} et al is ${ret.getAsLong}\n")
+        // ret
       }
 
       override def numRows(): OptionalLong = OptionalLong.empty()
