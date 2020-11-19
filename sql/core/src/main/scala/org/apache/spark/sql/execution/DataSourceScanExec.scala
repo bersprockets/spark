@@ -475,6 +475,7 @@ case class FileSourceScanExec(
     val numOutputRows = longMetric("numOutputRows")
     if (needsUnsafeRowConversion) {
       inputRDD.mapPartitionsWithIndexInternal { (index, iter) =>
+        // logWarning("V1: Starting task")
         val toUnsafe = UnsafeProjection.create(schema)
         toUnsafe.initialize(index)
         iter.map { row =>

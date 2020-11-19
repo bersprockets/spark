@@ -19,7 +19,7 @@ package org.apache.spark.sql.execution.datasources.v2
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.AttributeMap
+import org.apache.spark.sql.catalyst.expressions.{AttributeMap, UnsafeProjection, UnsafeRow}
 import org.apache.spark.sql.catalyst.plans.physical
 import org.apache.spark.sql.catalyst.plans.physical.SinglePartition
 import org.apache.spark.sql.catalyst.util.truncatedString
@@ -97,10 +97,23 @@ trait DataSourceV2ScanExecBase extends LeafExecNode {
 
   override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
-    inputRDD.map { r =>
+    inputRDD.mapPartitionsWithIndexInternal { (index, iter) =>
+      // logWarning("V2: Starting task")
+      val toUnsafe = UnsafeProjection.create(schema)
+      toUnsafe.initialize(index)
+      iter.map { r =>
+        numOutputRows += 1
+        if (r.isInstanceOf[UnsafeRow]) {
+          r
+        } else {
+          toUnsafe(r)
+        }
+      }
+    }
+    /* inputRDD.map { r =>
       numOutputRows += 1
       r
-    }
+    } */
   }
 
   override def doExecuteColumnar(): RDD[ColumnarBatch] = {
