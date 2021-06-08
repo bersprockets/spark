@@ -250,11 +250,12 @@ private[sql] class AvroSerializer(
         s"Avro $avroPathStr schema length (${avroFields.size}) doesn't match " +
         s"SQL ${toFieldStr(catalystPath)} schema length (${catalystStruct.length})")
     }
+    val avroSchemaMap = AvroUtils.getAvroSchemaMap(avroStruct)
 
     val (avroIndices: Array[Int], fieldConverters: Array[Converter]) =
       catalystStruct.map { catalystField =>
         val avroField = AvroUtils
-            .getAvroFieldByName(avroStruct, catalystField.name, avroPath) match {
+            .getAvroFieldByName(avroSchemaMap, catalystField.name, avroPath) match {
           case Some(f) => f
           case None => throw new IncompatibleSchemaException(s"Cannot find " +
               s"${toFieldStr(catalystPath :+ catalystField.name)} in Avro schema at $avroPathStr")
