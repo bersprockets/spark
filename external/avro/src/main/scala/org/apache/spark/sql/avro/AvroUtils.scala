@@ -210,7 +210,9 @@ private[sql] object AvroUtils extends Logging {
         s"Attempting to treat ${avroSchema.getName} as a RECORD, but it was: ${avroSchema.getType}")
     }
 
-    avroSchema.getFields.asScala.groupBy(f => f.name.toLowerCase(Locale.ROOT))
+    avroSchema.getFields.asScala.groupBy(f => f.name.toLowerCase(Locale.ROOT)).map { case (k, v) =>
+      (k, v.toSeq) // needed for scala 2.13
+    }
   }
 
   /**
