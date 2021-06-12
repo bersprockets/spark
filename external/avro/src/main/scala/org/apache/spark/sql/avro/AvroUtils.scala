@@ -203,15 +203,32 @@ private[sql] object AvroUtils extends Logging {
     }
   }
 
-  private[avro] def getAvroSchemaMap(
-      avroSchema: Schema): Map[String, Seq[Schema.Field]] = {
+  class AvroSchemaHolder(avroSchema: Schema, lookupSchema: StructType) {
     if (avroSchema.getType != Schema.Type.RECORD) {
       throw new IncompatibleSchemaException(
         s"Attempting to treat ${avroSchema.getName} as a RECORD, but it was: ${avroSchema.getType}")
     }
 
-    avroSchema.getFields.asScala.groupBy(f => f.name.toLowerCase(Locale.ROOT)).map { case (k, v) =>
-      (k, v.toSeq) // needed for scala 2.13
+    // It's expensive to build a map. So if you're not going to look up too many fields,
+    // then it's not worth building a map, even of the Avro schema contains many fields.
+    val schemaMap = if (lookupSchema.size > 20) {
+      val map = avroSchema.getFields.asScala.groupBy { f =>
+        f.name.toLowerCase(Locale.ROOT)
+      }.map { case (k, v) =>
+        (k, v.toSeq) // needed for scala 2.13
+      }
+      Some(map)
+    } else {
+      None
+    }
+
+    def getField(name: String): Seq[Schema.Field] = {
+      if (schemaMap.isDefined) {
+        schemaMap.get.get(name.toLowerCase(Locale.ROOT))
+          .getOrElse(Seq.empty[Schema.Field])
+      } else {
+        avroSchema.getFields.asScala.filter(f => SQLConf.get.resolver(f.name(), name)).toSeq
+      }
     }
   }
 
@@ -219,7 +236,7 @@ private[sql] object AvroUtils extends Logging {
    * Extract a single field from `avroSchema` which has the desired field name,
    * performing the matching with proper case sensitivity according to [[SQLConf.resolver]].
    *
-   * @param avroSchemaMap The schema in which to search for the field. Must be of type Map.
+   * @param avroSchemaHolder The schema in which to search for the field. Must be of type Map.
    * @param name The name of the field to search for.
    * @param avroPath The seq of parent field names leading to `avroSchema`.
    * @return `Some(match)` if a matching Avro field is found, otherwise `None`.
@@ -229,13 +246,12 @@ private[sql] object AvroUtils extends Logging {
    *                                     the same name with difference case).
    */
   private[avro] def getAvroFieldByName(
-      avroSchemaMap: Map[String, Seq[Schema.Field]],
+      avroSchemaHolder: AvroSchemaHolder,
       name: String,
       avroPath: Seq[String]): Option[Schema.Field] = {
 
     // print(s"avroSchemaMap is $avroSchemaMap\n")
-    val candidates = avroSchemaMap.get(name.toLowerCase(Locale.ROOT))
-      .getOrElse(Seq.empty[Schema.Field])
+    val candidates = avroSchemaHolder.getField(name)
     // print(s"candidates is $candidates\n")
     candidates.filter(f => SQLConf.get.resolver(f.name(), name)) match {
       case Seq(avroField) => Some(avroField)
