@@ -203,31 +203,34 @@ private[sql] object AvroUtils extends Logging {
     }
   }
 
-  class AvroSchemaHolder(avroSchema: Schema, lookupSchema: StructType) {
+  class AvroSchemaHelper(avroSchema: Schema, lookupSchema: StructType) {
     if (avroSchema.getType != Schema.Type.RECORD) {
       throw new IncompatibleSchemaException(
         s"Attempting to treat ${avroSchema.getName} as a RECORD, but it was: ${avroSchema.getType}")
     }
 
-    // It's expensive to build a map. So if you're not going to look up too many fields,
-    // then it's not worth building a map, even of the Avro schema contains many fields.
-    val schemaMap = if (lookupSchema.size > 20) {
-      val map = avroSchema.getFields.asScala.groupBy { f =>
+    val schemaMap = avroSchema.getFields.asScala.groupBy { f =>
         f.name.toLowerCase(Locale.ROOT)
       }.map { case (k, v) =>
-        (k, v.toSeq) // needed for scala 2.13
-      }
-      Some(map)
-    } else {
-      None
+      (k, v.toSeq) // needed for scala 2.13
     }
 
-    def getField(name: String): Seq[Schema.Field] = {
-      if (schemaMap.isDefined) {
-        schemaMap.get.get(name.toLowerCase(Locale.ROOT))
-          .getOrElse(Seq.empty[Schema.Field])
-      } else {
-        avroSchema.getFields.asScala.filter(f => SQLConf.get.resolver(f.name(), name)).toSeq
+    def getFieldByName(
+        name: String,
+        avroPath: Seq[String]): Option[Schema.Field] = {
+
+      // get candidates, ignoring case of field name
+      val candidates = schemaMap.get(name.toLowerCase(Locale.ROOT))
+        .getOrElse(Seq.empty[Schema.Field])
+
+      // search candidates, taking into account case sensitivity settings
+      candidates.filter(f => SQLConf.get.resolver(f.name(), name)) match {
+        case Seq(avroField) => Some(avroField)
+        case Seq() => None
+        case matches => throw new IncompatibleSchemaException(s"Searching for '$name' in Avro " +
+          s"schema at ${toFieldStr(avroPath)} gave ${matches.size} matches. Candidates: " +
+          matches.map(_.name()).mkString("[", ", ", "]")
+        )
       }
     }
   }
@@ -245,7 +248,7 @@ private[sql] object AvroUtils extends Logging {
    *                                     is used and `avroSchema` has two or more fields that have
    *                                     the same name with difference case).
    */
-  private[avro] def getAvroFieldByName(
+  /* private[avro] def getAvroFieldByName(
       avroSchemaHolder: AvroSchemaHolder,
       name: String,
       avroPath: Seq[String]): Option[Schema.Field] = {
@@ -261,7 +264,7 @@ private[sql] object AvroUtils extends Logging {
           matches.map(_.name()).mkString("[", ", ", "]")
       )
     }
-  }
+  } */
 
   /**
    * Convert a sequence of hierarchical field names (like `Seq(foo, bar)`) into a human-readable

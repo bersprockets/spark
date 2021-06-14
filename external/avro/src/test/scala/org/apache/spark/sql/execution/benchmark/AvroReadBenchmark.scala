@@ -292,15 +292,16 @@ object AvroReadBenchmark extends SqlBasedBenchmark {
 
     runBenchmark("Select All From Wide Columns") {
       wideColumnsBenchmark(1024 * 1024 * 1, 100)
-      wideColumnsBenchmark(1024 * 1024 * 1, 200)
       wideColumnsBenchmark(1024 * 1024 * 1, 300)
+      wideColumnsBenchmark(1024 * 1024 * 1, 600)
+      wideColumnsBenchmark(1024 * 1024 * 1, 3000)
     }
 
-    /* runBenchmark("Single Column Scan From Wide Columns") {
+    runBenchmark("Single Column Scan From Wide Columns") {
       columnsBenchmark(1024 * 1024 * 1, 100)
       columnsBenchmark(1024 * 1024 * 1, 200)
       columnsBenchmark(1024 * 1024 * 1, 300)
-    } */
+    }
     // Benchmark pushdown filters that refer to top-level columns.
     // TODO (SPARK-32328): Add benchmarks for filters with nested column attributes.
     /* filtersPushdownBenchmark(rowsNum = 1000 * 1000, numIters = 3) */
