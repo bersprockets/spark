@@ -203,7 +203,7 @@ private[sql] object AvroUtils extends Logging {
     }
   }
 
-  class AvroSchemaHelper(avroSchema: Schema, lookupSchema: StructType) {
+  class AvroSchemaHelper(avroSchema: Schema) {
     if (avroSchema.getType != Schema.Type.RECORD) {
       throw new IncompatibleSchemaException(
         s"Attempting to treat ${avroSchema.getName} as a RECORD, but it was: ${avroSchema.getType}")

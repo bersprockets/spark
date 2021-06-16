@@ -294,7 +294,7 @@ object AvroReadBenchmark extends SqlBasedBenchmark {
       wideColumnsBenchmark(1024 * 1024 * 1, 100)
       wideColumnsBenchmark(1024 * 1024 * 1, 300)
       wideColumnsBenchmark(1024 * 1024 * 1, 600)
-      wideColumnsBenchmark(1024 * 1024 * 1, 3000)
+      wideColumnsBenchmark(1024 * 1024 * 1, 1000)
     }
 
     runBenchmark("Single Column Scan From Wide Columns") {

@@ -338,7 +338,7 @@ private[sql] class AvroDeserializer(
     val validFieldIndexes = ArrayBuffer.empty[Int]
     val fieldWriters = ArrayBuffer.empty[(CatalystDataUpdater, Any) => Unit]
 
-    val avroSchemaHelper = new AvroUtils.AvroSchemaHelper(avroType, catalystType)
+    val avroSchemaHelper = new AvroUtils.AvroSchemaHelper(avroType)
     val length = catalystType.length
     var i = 0
     while (i < length) {

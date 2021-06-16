@@ -250,7 +250,7 @@ private[sql] class AvroSerializer(
         s"Avro $avroPathStr schema length (${avroFields.size}) doesn't match " +
         s"SQL ${toFieldStr(catalystPath)} schema length (${catalystStruct.length})")
     }
-    val avroSchemaHelper = new AvroUtils.AvroSchemaHelper(avroStruct, catalystStruct)
+    val avroSchemaHelper = new AvroUtils.AvroSchemaHelper(avroStruct)
 
     val (avroIndices: Array[Int], fieldConverters: Array[Converter]) =
       catalystStruct.map { catalystField =>
