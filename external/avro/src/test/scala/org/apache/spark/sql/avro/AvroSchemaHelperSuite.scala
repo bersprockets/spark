@@ -25,7 +25,7 @@ import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 class AvroSchemaHelperSuite extends SQLTestUtils
   with SharedSparkSession {
 
-  test("ensure top level is a record") {
+  test("ensure schema is a record") {
     val jsonSchema = s"""
       {
         "namespace": "logical",
@@ -39,7 +39,7 @@ class AvroSchemaHelperSuite extends SQLTestUtils
 
     val avroSchema = Schema.parse(jsonSchema).getField("date").schema()
     val msg = intercept[IncompatibleSchemaException] {
-      new AvroUtils.AvroSchemaHelper(avroSchema)
+      new AvroUtils.AvroSchemaHelper(avroSchema, Seq(""))
     }.getMessage
     assert(msg.contains("Attempting to treat int as a RECORD"))
   }
@@ -53,27 +53,27 @@ class AvroSchemaHelperSuite extends SQLTestUtils
     )
 
     val avroSchema = SchemaConverters.toAvroType(catalystSchema)
-    val helper = new AvroUtils.AvroSchemaHelper(avroSchema)
+    val helper = new AvroUtils.AvroSchemaHelper(avroSchema, Seq(""))
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "true") {
-      assert(helper.getFieldByName("A", Seq("")).get.name() == "A")
-      assert(helper.getFieldByName("a", Seq("")).get.name() == "a")
-      assert(helper.getFieldByName("b", Seq("")).get.name() == "b")
-      assert(helper.getFieldByName("B", Seq("")).isEmpty)
+      assert(helper.getFieldByName("A").get.name() == "A")
+      assert(helper.getFieldByName("a").get.name() == "a")
+      assert(helper.getFieldByName("b").get.name() == "b")
+      assert(helper.getFieldByName("B").isEmpty)
     }
 
     withSQLConf(SQLConf.CASE_SENSITIVE.key -> "false") {
       val msg1 = intercept[IncompatibleSchemaException] {
-        helper.getFieldByName("A", Seq(""))
+        helper.getFieldByName("A")
       }.getMessage
       assert(msg1.contains("Searching for 'A' in Avro schema"))
 
       val msg2 = intercept[IncompatibleSchemaException] {
-        helper.getFieldByName("a", Seq(""))
+        helper.getFieldByName("a")
       }.getMessage
       assert(msg2.contains("Searching for 'a' in Avro schema"))
 
-      assert(helper.getFieldByName("b", Seq("")).get.name() == "b")
-      assert(helper.getFieldByName("B", Seq("")).get.name() == "b")
+      assert(helper.getFieldByName("b").get.name() == "b")
+      assert(helper.getFieldByName("B").get.name() == "b")
     }
   }
 }

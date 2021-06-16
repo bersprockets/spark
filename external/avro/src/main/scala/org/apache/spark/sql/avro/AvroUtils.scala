@@ -203,7 +203,7 @@ private[sql] object AvroUtils extends Logging {
     }
   }
 
-  class AvroSchemaHelper(avroSchema: Schema) {
+  class AvroSchemaHelper(avroSchema: Schema, avroPath: Seq[String]) {
     if (avroSchema.getType != Schema.Type.RECORD) {
       throw new IncompatibleSchemaException(
         s"Attempting to treat ${avroSchema.getName} as a RECORD, but it was: ${avroSchema.getType}")
@@ -215,9 +215,18 @@ private[sql] object AvroUtils extends Logging {
       (k, v.toSeq) // needed for scala 2.13
     }
 
-    def getFieldByName(
-        name: String,
-        avroPath: Seq[String]): Option[Schema.Field] = {
+    /**
+     * Extract a single field from the contained avro schema which has the desired field name,
+     * performing the matching with proper case sensitivity according to [[SQLConf.resolver]].
+     *
+     * @param name The name of the field to search for.
+     * @return `Some(match)` if a matching Avro field is found, otherwise `None`.
+     * @throws IncompatibleSchemaException if the contained AVRO schema contains multiple
+     *                                     fields matching `name` (i.e., case-insensitive matching
+     *                                     is used and `avroSchema` has two or more fields that have
+     *                                     the same name with difference case).
+     */
+    def getFieldByName(name: String): Option[Schema.Field] = {
 
       // get candidates, ignoring case of field name
       val candidates = schemaMap.get(name.toLowerCase(Locale.ROOT))
@@ -234,37 +243,6 @@ private[sql] object AvroUtils extends Logging {
       }
     }
   }
-
-  /**
-   * Extract a single field from `avroSchema` which has the desired field name,
-   * performing the matching with proper case sensitivity according to [[SQLConf.resolver]].
-   *
-   * @param avroSchemaHolder The schema in which to search for the field. Must be of type Map.
-   * @param name The name of the field to search for.
-   * @param avroPath The seq of parent field names leading to `avroSchema`.
-   * @return `Some(match)` if a matching Avro field is found, otherwise `None`.
-   * @throws IncompatibleSchemaException if `avroSchema` is not a RECORD or contains multiple
-   *                                     fields matching `name` (i.e., case-insensitive matching
-   *                                     is used and `avroSchema` has two or more fields that have
-   *                                     the same name with difference case).
-   */
-  /* private[avro] def getAvroFieldByName(
-      avroSchemaHolder: AvroSchemaHolder,
-      name: String,
-      avroPath: Seq[String]): Option[Schema.Field] = {
-
-    // print(s"avroSchemaMap is $avroSchemaMap\n")
-    val candidates = avroSchemaHolder.getField(name)
-    // print(s"candidates is $candidates\n")
-    candidates.filter(f => SQLConf.get.resolver(f.name(), name)) match {
-      case Seq(avroField) => Some(avroField)
-      case Seq() => None
-      case matches => throw new IncompatibleSchemaException(s"Searching for '$name' in Avro " +
-          s"schema at ${toFieldStr(avroPath)} gave ${matches.size} matches. Candidates: " +
-          matches.map(_.name()).mkString("[", ", ", "]")
-      )
-    }
-  } */
 
   /**
    * Convert a sequence of hierarchical field names (like `Seq(foo, bar)`) into a human-readable
