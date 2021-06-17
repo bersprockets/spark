@@ -217,14 +217,10 @@ private[sql] object AvroUtils extends Logging {
 
     /**
      * Extract a single field from the contained avro schema which has the desired field name,
-     * performing the matching with proper case sensitivity according to [[SQLConf.resolver]].
+     * performing the matching with proper case sensitivity according to SQLConf.resolver.
      *
      * @param name The name of the field to search for.
      * @return `Some(match)` if a matching Avro field is found, otherwise `None`.
-     * @throws IncompatibleSchemaException if the contained AVRO schema contains multiple
-     *                                     fields matching `name` (i.e., case-insensitive matching
-     *                                     is used and `avroSchema` has two or more fields that have
-     *                                     the same name with difference case).
      */
     def getFieldByName(name: String): Option[Schema.Field] = {
 
