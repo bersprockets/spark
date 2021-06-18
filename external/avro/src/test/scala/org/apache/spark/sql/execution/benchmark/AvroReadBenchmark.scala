@@ -191,7 +191,7 @@ object AvroReadBenchmark extends SqlBasedBenchmark {
     }
   }
 
-  private def wideColumnsBenchmark(values: Int, width: Int): Unit = {
+  private def wideColumnsBenchmark(values: Int, width: Int, files: Int): Unit = {
     val benchmark =
       new Benchmark(s"Wide Column Scan from $width columns", values, output = output)
 
@@ -201,7 +201,9 @@ object AvroReadBenchmark extends SqlBasedBenchmark {
         val middle = width / 2
         val selectExpr = (1 to width).map(i => s"value as c$i")
         spark.range(values).map(_ => Random.nextLong).toDF()
-          .selectExpr(selectExpr: _*).createOrReplaceTempView("t1")
+          .selectExpr(selectExpr: _*)
+          .repartition(files) // ensure at least `files` number of splits (but maybe more)
+          .createOrReplaceTempView("t1")
 
         prepareTable(dir, spark.sql("SELECT * FROM t1"))
 
@@ -291,10 +293,7 @@ object AvroReadBenchmark extends SqlBasedBenchmark {
     }
 
     runBenchmark("Select All From Wide Columns") {
-      wideColumnsBenchmark(1024 * 1024 * 1, 100)
-      wideColumnsBenchmark(1024 * 1024 * 1, 300)
-      wideColumnsBenchmark(1024 * 1024 * 1, 600)
-      wideColumnsBenchmark(1024 * 1024 * 1, 1000)
+      wideColumnsBenchmark(500000, 1000, 20)
     }
 
     runBenchmark("Single Column Scan From Wide Columns") {
