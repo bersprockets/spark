@@ -3496,6 +3496,12 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val IGNORE_FILE_STATS = buildConf("spark.sql.ignore.file.stats")
+    .doc("When set to true, Spark SQL will ignore statistics on input files")
+    .version("3.2.0")
+    .booleanConf
+    .createWithDefault(false)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -4228,6 +4234,8 @@ class SQLConf extends Serializable with Logging {
   def inferDictAsStruct: Boolean = getConf(SQLConf.INFER_NESTED_DICT_AS_STRUCT)
 
   def useV1Command: Boolean = getConf(SQLConf.LEGACY_USE_V1_COMMAND)
+
+  def ignoreFileStats: Boolean = getConf(SQLConf.IGNORE_FILE_STATS)
 
   /** ********************** SQLConf functionality methods ************ */
 

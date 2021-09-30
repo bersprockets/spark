@@ -20,6 +20,7 @@ package org.apache.spark.sql.execution.datasources
 import org.apache.spark.sql.{SparkSession, SQLContext}
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.execution.FileRelation
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister}
 import org.apache.spark.sql.types.{StructField, StructType}
 
@@ -66,7 +67,11 @@ case class HadoopFsRelation(
 
   override def sizeInBytes: Long = {
     val compressionFactor = sqlContext.conf.fileCompressionFactor
-    (location.sizeInBytes * compressionFactor).toLong
+    if (sqlContext.conf.getConf(SQLConf.IGNORE_FILE_STATS)) {
+      Long.MaxValue
+    } else {
+      (location.sizeInBytes * compressionFactor).toLong
+    }
   }
 
 
