@@ -4767,7 +4767,7 @@ object functions {
    * @since 2.4.0
    */
   @scala.annotation.varargs
-  def arrays_zip(e: Column*): Column = withExpr { ArraysZip(e.map(_.expr)) }
+  def arrays_zip(e: Column*): Column = withExpr { ArraysZip(e.map(_.expr).toVector) }
 
   /**
    * Returns the union of all the given maps.
