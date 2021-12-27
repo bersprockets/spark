@@ -887,6 +887,7 @@ case class CollapseCodegenStages(
     case e: LeafExpression => true
     // CodegenFallback requires the input to be an InternalRow
     case e: CodegenFallback => false
+    case e: Expression if e.children.size > conf.wholeStageMaxNumFields => false
     case _ => true
   }
 
