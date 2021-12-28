@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution
 
 import org.apache.spark.sql.{Dataset, QueryTest, Row, SaveMode}
+import org.apache.spark.sql.catalyst.expressions.{Alias, Greatest}
 import org.apache.spark.sql.catalyst.expressions.codegen.{ByteCodeStats, CodeAndComment, CodeGenerator}
 import org.apache.spark.sql.execution.adaptive.DisableAdaptiveExecutionSuite
 import org.apache.spark.sql.execution.aggregate.{HashAggregateExec, SortAggregateExec}
@@ -787,6 +788,29 @@ class WholeStageCodegenSuite extends QueryTest with SharedSparkSession
           }
           assert(e.isInstanceOf[IllegalStateException])
           assert(e.getMessage.contains(expectedErrMsg))
+        }
+      }
+    }
+  }
+
+  test("Skip WholeStageCodegen when number of function parameters exceeds max num fields") {
+    Seq((101, false), (100, true)).foreach { case (paramCount, expectWholeStage) =>
+      withTempPath { dir =>
+        val path = dir.getCanonicalPath
+        spark.range(10).write.mode(SaveMode.Overwrite).parquet(path)
+
+        val parms = Seq.tabulate(paramCount)($"id" + _)
+
+        withSQLConf(SQLConf.WHOLESTAGE_MAX_NUM_FIELDS.key -> "100") {
+          val df = spark.read.parquet(path).select(greatest(parms: _*).as("greatest"))
+          val plan = df.queryExecution.executedPlan
+          val hasWholeStage = plan.find {
+            case WholeStageCodegenExec(
+              ProjectExec(Seq(Alias(Greatest(_), _)), _)) => true
+            case _ => false
+          }.isDefined
+
+          assert(expectWholeStage == hasWholeStage)
         }
       }
     }
