@@ -575,6 +575,13 @@ object WholeStageCodegenExec {
     numOfNestedFields(dataType) > conf.wholeStageMaxNumFields
   }
 
+  def hasTooManyChildren(conf: SQLConf, e: Expression): Boolean = {
+    // avoid descending into the tree of each child of we don't
+    // have too many children of any folable status
+    e.children.size > conf.wholeStageMaxNumFields &&
+      e.children.filterNot(_.foldable).size > conf.wholeStageMaxNumFields
+  }
+
   // The whole-stage codegen generates Java code on the driver side and sends it to the Executors
   // for compilation and execution. The whole-stage codegen can bring significant performance
   // improvements with large dataset in distributed environments. However, in the test environment,
@@ -887,7 +894,7 @@ case class CollapseCodegenStages(
     case e: LeafExpression => true
     // CodegenFallback requires the input to be an InternalRow
     case e: CodegenFallback => false
-    case e: Expression if e.children.size > conf.wholeStageMaxNumFields => false
+    case e: Expression if WholeStageCodegenExec.hasTooManyChildren(conf, e) => false
     case _ => true
   }
 

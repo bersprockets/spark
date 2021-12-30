@@ -18,7 +18,7 @@
 package org.apache.spark.sql.execution
 
 import org.apache.spark.sql.{Dataset, QueryTest, Row, SaveMode}
-import org.apache.spark.sql.catalyst.expressions.{Alias, Greatest}
+import org.apache.spark.sql.catalyst.expressions.{Alias, CreateArray, Greatest}
 import org.apache.spark.sql.catalyst.expressions.codegen.{ByteCodeStats, CodeAndComment, CodeGenerator}
 import org.apache.spark.sql.execution.adaptive.DisableAdaptiveExecutionSuite
 import org.apache.spark.sql.execution.aggregate.{HashAggregateExec, SortAggregateExec}
@@ -812,6 +812,25 @@ class WholeStageCodegenSuite extends QueryTest with SharedSparkSession
 
           assert(expectWholeStage == hasWholeStage)
         }
+      }
+    }
+
+    // allow whole stage codegen when number of foldable parameters exceeds max num fields,
+    // but number of non-foldable parameters does not
+    withTempPath { dir =>
+      val path = dir.getCanonicalPath
+      spark.range(10).write.mode(SaveMode.Overwrite).parquet(path)
+      val parms = Seq.tabulate(100)($"id" + _) ++ // non-foldable paramaters
+        Seq.tabulate(201)(x => abs(lit(x) + x)) // foldable parameters
+      withSQLConf(SQLConf.WHOLESTAGE_MAX_NUM_FIELDS.key -> "100") {
+        val df = spark.read.parquet(path).select(array(parms: _*).as("array"))
+        val plan = df.queryExecution.executedPlan
+        val hasWholeStage = plan.find {
+          case WholeStageCodegenExec(
+          ProjectExec(Seq(Alias(CreateArray(_, _), _)), _)) => true
+          case _ => false
+        }.isDefined
+        assert(hasWholeStage)
       }
     }
   }
