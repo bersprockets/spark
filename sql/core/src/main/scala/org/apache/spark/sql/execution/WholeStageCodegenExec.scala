@@ -575,11 +575,21 @@ object WholeStageCodegenExec {
     numOfNestedFields(dataType) > conf.wholeStageMaxNumFields
   }
 
-  def hasTooManyChildren(conf: SQLConf, e: Expression): Boolean = {
-    // avoid descending into the tree of each child of we don't
-    // have too many children of any folable status
-    e.children.size > conf.wholeStageMaxNumFields &&
-      e.children.filterNot(_.foldable).size > conf.wholeStageMaxNumFields
+  def isTooManyAttributes(conf: SQLConf, expressions: Seq[Expression]): Boolean = {
+    // This doesn't prevent trouble in all cases, e.g., many nonfolable expressions that do not
+    // reference an attribute (e.g., rand). It's difficult to count those without sometimes
+    // double counting (e.g., when a nonfoldable expression is a child of another expression).
+    // Checking for the count of attributes will likely cover most cases and is in the spirit
+    // of `WholeStageCodegenExec#isTooManyFields`.
+    expressions.map(_.collect {
+      case a: Attribute => a
+    }.size).sum > conf.wholeStageMaxNumFields
+
+    /* val size = expressions.map(_.collect {
+      case a: Attribute => a
+    }.size).sum
+    print(s"Size is $size\n")
+    size > conf.wholeStageMaxNumFields */
   }
 
   // The whole-stage codegen generates Java code on the driver side and sends it to the Executors
@@ -894,19 +904,20 @@ case class CollapseCodegenStages(
     case e: LeafExpression => true
     // CodegenFallback requires the input to be an InternalRow
     case e: CodegenFallback => false
-    case e: Expression if WholeStageCodegenExec.hasTooManyChildren(conf, e) => false
     case _ => true
   }
 
   private def supportCodegen(plan: SparkPlan): Boolean = plan match {
     case plan: CodegenSupport if plan.supportCodegen =>
       val willFallback = plan.expressions.exists(_.find(e => !supportCodegen(e)).isDefined)
+      val hasTooManyAttrs =
+        WholeStageCodegenExec.isTooManyAttributes(conf, plan.expressions)
       // the generated code will be huge if there are too many columns
       val hasTooManyOutputFields =
         WholeStageCodegenExec.isTooManyFields(conf, plan.schema)
       val hasTooManyInputFields =
         plan.children.exists(p => WholeStageCodegenExec.isTooManyFields(conf, p.schema))
-      !willFallback && !hasTooManyOutputFields && !hasTooManyInputFields
+      !willFallback && !hasTooManyOutputFields && !hasTooManyInputFields && !hasTooManyAttrs
     case _ => false
   }
 
