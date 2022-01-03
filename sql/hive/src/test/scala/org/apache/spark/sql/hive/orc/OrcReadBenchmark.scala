@@ -353,6 +353,7 @@ object OrcReadBenchmark extends SqlBasedBenchmark {
     } */
 
     runBenchmark("Struct scan") {
+      structBenchmark(1024 * 1024 * 1, 10)
       structBenchmark(1024 * 1024 * 1, 100)
       structBenchmark(1024 * 1024 * 1, 300)
       structBenchmark(1024 * 1024 * 1, 600)
