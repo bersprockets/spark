@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.datasources.orc
 
 import org.apache.hadoop.io._
+import org.apache.orc.TypeDescription
 import org.apache.orc.mapred.{OrcList, OrcMap, OrcStruct, OrcTimestamp}
 
 import org.apache.spark.sql.catalyst.InternalRow
@@ -150,21 +151,23 @@ class OrcSerializer(dataSchema: StructType) {
     case DecimalType.Fixed(precision, scale) =>
       OrcShimUtils.getHiveDecimalWritable(precision, scale)
 
-    case st: StructType => (getter, ordinal) =>
-      val result = createOrcValue(st).asInstanceOf[OrcStruct]
-      val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
-      val numFields = st.length
-      val struct = getter.getStruct(ordinal, numFields)
-      var i = 0
-      while (i < numFields) {
-        if (struct.isNullAt(i)) {
-          result.setFieldValue(i, null)
-        } else {
-          result.setFieldValue(i, fieldConverters(i)(struct, i))
+    case st: StructType =>
+      val typeDesc = OrcUtils.orcTypeDescription(dataType)
+      (getter, ordinal) =>
+        val result = createOrcValue(typeDesc).asInstanceOf[OrcStruct]
+        val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
+        val numFields = st.length
+        val struct = getter.getStruct(ordinal, numFields)
+        var i = 0
+        while (i < numFields) {
+          if (struct.isNullAt(i)) {
+            result.setFieldValue(i, null)
+          } else {
+            result.setFieldValue(i, fieldConverters(i)(struct, i))
+          }
+          i += 1
         }
-        i += 1
-      }
-      result
+        result
 
     case ArrayType(elementType, _) => (getter, ordinal) =>
       val result = createOrcValue(dataType).asInstanceOf[OrcList[WritableComparable[_]]]
@@ -214,5 +217,9 @@ class OrcSerializer(dataSchema: StructType) {
    */
   private def createOrcValue(dataType: DataType) = {
     OrcStruct.createValue(OrcUtils.orcTypeDescription(dataType))
+  }
+
+  private def createOrcValue(typeDesc: TypeDescription) = {
+    OrcStruct.createValue(typeDesc)
   }
 }
