@@ -153,8 +153,13 @@ class OrcSerializer(dataSchema: StructType) {
 
     case st: StructType =>
       val typeDesc = OrcUtils.orcTypeDescription(dataType)
+      val resultOpt = if (reuseObj) {
+        Some(createOrcValue(typeDesc).asInstanceOf[OrcStruct])
+      } else {
+        None
+      }
       (getter, ordinal) =>
-        val result = createOrcValue(typeDesc).asInstanceOf[OrcStruct]
+        val result = resultOpt.getOrElse(createOrcValue(typeDesc).asInstanceOf[OrcStruct])
         val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
         val numFields = st.length
         val struct = getter.getStruct(ordinal, numFields)
