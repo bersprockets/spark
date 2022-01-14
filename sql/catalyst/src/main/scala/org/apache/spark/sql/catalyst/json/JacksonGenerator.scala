@@ -186,7 +186,7 @@ private[sql] class JacksonGenerator(
         gen.writeNumber(row.getDecimal(ordinal, dt.precision, dt.scale).toJavaBigDecimal)
 
     case st: StructType =>
-      val fieldWriters = st.map(_.dataType).map(makeWriter)
+      val fieldWriters = st.map(_.dataType).map(makeWriter).toArray
       (row: SpecializedGetters, ordinal: Int) =>
         writeObject(writeFields(row.getStruct(ordinal, st.length), st, fieldWriters))
 
