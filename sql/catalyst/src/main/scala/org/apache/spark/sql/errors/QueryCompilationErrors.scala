@@ -332,6 +332,11 @@ object QueryCompilationErrors {
       "it cannot be used in aggregate functions")
   }
 
+  def aggregateInAggregateFilterError(): Throwable = {
+    new AnalysisException("FILTER expression contains aggregate, " +
+      "it cannot be used in aggregate functions")
+  }
+
   def aliasNumberNotMatchColumnNumberError(
       columnSize: Int, outputSize: Int, t: TreeNode[_]): Throwable = {
     new AnalysisException("Number of column aliases does not match number of columns. " +
