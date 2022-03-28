@@ -333,7 +333,7 @@ object QueryCompilationErrors {
   }
 
   def nonBooleanAggregateFilterError(): Throwable = {
-    new AnalysisException("FILTER expression does not return true or false. " +
+    new AnalysisException("FILTER expression is not of type boolean. " +
       "It cannot be used in an aggregate function")
   }
 
