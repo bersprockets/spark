@@ -183,7 +183,8 @@ object RuleIdCollection {
       "org.apache.spark.sql.catalyst.analysis.TypeCoercion$PromoteStrings" ::
       "org.apache.spark.sql.catalyst.analysis.TypeCoercionBase$StackCoercion" ::
       "org.apache.spark.sql.catalyst.analysis.TypeCoercionBase$StringLiteralCoercion" ::
-      "org.apache.spark.sql.catalyst.analysis.TypeCoercionBase$WindowFrameCoercion" :: Nil
+      "org.apache.spark.sql.catalyst.analysis.TypeCoercionBase$WindowFrameCoercion" ::
+      "org.apache.spark.sql.catalyst.analysis.TypeCoercionBase$InlineCoercion" :: Nil
     }
   }
 

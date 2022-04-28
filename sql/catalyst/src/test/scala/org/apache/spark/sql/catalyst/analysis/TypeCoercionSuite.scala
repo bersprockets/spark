@@ -458,6 +458,61 @@ abstract class TypeCoercionSuiteBase extends AnalysisTest {
         op(timestampLiteral, Cast(timestampNTZLiteral, TimestampType)))
     }
   }
+
+  test("Inline function nullability") {
+    val rule = TypeCoercion.InlineCoercion
+
+    val structWithNoNull = CreateNamedStruct(
+      Seq(Literal("a"), Literal(1),
+      Literal("b"), Literal(2)))
+    val arrayWithNoNull = CreateArray(Seq(structWithNoNull))
+    ruleTest(rule,
+      Inline(arrayWithNoNull),
+      Inline(arrayWithNoNull))
+
+    val arrayWithNullElement = CreateArray(Seq(structWithNoNull,
+      Literal(null, structWithNoNull.dataType)))
+    val expectedType = ArrayType(
+      StructType(
+        StructField("a", IntegerType, true) ::
+        StructField("b", IntegerType, true) ::
+        Nil))
+    ruleTest(rule,
+      Inline(arrayWithNullElement),
+      Inline(Cast(arrayWithNullElement, expectedType)))
+
+    val structWithNullField = CreateNamedStruct(
+      Seq(Literal("a"), Literal(1),
+        Literal("b"), Literal(null, IntegerType)))
+    val arrayWithNullFieldAndNullElement =
+      CreateArray(Seq(structWithNoNull, structWithNullField,
+        Literal(null, structWithNoNull.dataType)))
+    ruleTest(rule,
+      Inline(arrayWithNullFieldAndNullElement),
+      Inline(Cast(arrayWithNullFieldAndNullElement, expectedType)))
+
+    val arrayWithNullField =
+      CreateArray(Seq(structWithNoNull, structWithNullField))
+    ruleTest(rule,
+      Inline(arrayWithNullField),
+      Inline(arrayWithNullField))
+
+    val structWithAllNullFields = CreateNamedStruct(
+      Seq(Literal("a"), Literal(null, IntegerType),
+        Literal("b"), Literal(null, IntegerType)))
+    val arrayWithAllNullFields =
+      CreateArray(Seq(structWithAllNullFields, structWithNoNull))
+    ruleTest(rule,
+      Inline(arrayWithAllNullFields),
+      Inline(arrayWithAllNullFields))
+
+    val arrayWithAllNullFieldsAndNullElement =
+      CreateArray(Seq(structWithAllNullFields, structWithNoNull,
+        Literal(null, structWithNoNull.dataType)))
+    ruleTest(rule,
+      Inline(arrayWithAllNullFieldsAndNullElement),
+      Inline(arrayWithAllNullFieldsAndNullElement))
+  }
 }
 
 class TypeCoercionSuite extends TypeCoercionSuiteBase {
