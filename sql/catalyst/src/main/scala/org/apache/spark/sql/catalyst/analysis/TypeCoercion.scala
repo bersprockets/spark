@@ -788,6 +788,23 @@ abstract class TypeCoercionBase {
         DateSub(l, Literal(days))
     }
   }
+
+  object InlineCoercion extends TypeCoercionRule {
+
+    override val transform: PartialFunction[Expression, Expression] = {
+      // Skip nodes if unresolved or empty children
+      case i @ Inline(_) if !i.childrenResolved => i
+      case i @ Inline(c) if c.dataType.asInstanceOf[ArrayType].containsNull =>
+        val newDataType = c.dataType.asNullable
+        if (newDataType == c.dataType) {
+          i
+        } else {
+          val newChild = Cast(c, newDataType)
+          print(s"${c} to ${newChild}\n")
+          i.copy(child = newChild)
+        }
+    }
+  }
 }
 
 /**
@@ -824,7 +841,8 @@ object TypeCoercion extends TypeCoercionBase {
       ImplicitTypeCasts ::
       DateTimeOperations ::
       WindowFrameCoercion ::
-      StringLiteralCoercion :: Nil) :: Nil
+      StringLiteralCoercion ::
+      InlineCoercion :: Nil) :: Nil
 
   override def canCast(from: DataType, to: DataType): Boolean = Cast.canCast(from, to)
 
