@@ -917,7 +917,8 @@ object ColumnPruning extends Rule[LogicalPlan] {
 
     // for all other logical plans that inherits the output from it's children
     // Project over project is handled by the first case, skip it here.
-    case p @ Project(_, child) if !child.isInstanceOf[Project] =>
+    case p @ Project(_, child) if !child.isInstanceOf[Project] &&
+        !child.isInstanceOf[Generate] =>
       val required = child.references ++ p.references
       if (!child.inputSet.subsetOf(required)) {
         val newChildren = child.children.map(c => prunedChild(c, required))

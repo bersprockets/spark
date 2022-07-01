@@ -326,7 +326,7 @@ object GeneratorUnrequiredChildrenPruning {
         unrequiredIndices.toSet != g.unrequiredChildIndex.toSet) {
         Some(p.copy(child = g.copy(child = newChild, unrequiredChildIndex = unrequiredIndices)))
       } else {
-        Some(p)
+        None
       }
     case _ => None
   }
