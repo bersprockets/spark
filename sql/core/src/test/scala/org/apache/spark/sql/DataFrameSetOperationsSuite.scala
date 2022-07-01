@@ -179,6 +179,12 @@ class DataFrameSetOperationsSuite extends QueryTest with SharedSparkSession {
     assert(df4.schema.forall(!_.nullable))
   }
 
+  test("SPARK-39612: count of except all result should not fail") {
+    val df1 = Seq(("a"), ("b")).toDF("value")
+    val df2 = Seq(("a")).toDF("value")
+    assert(df1.exceptAll(df2).count == 1)
+  }
+
   test("intersect") {
     checkAnswer(
       lowerCaseData.intersect(lowerCaseData),
