@@ -17,10 +17,8 @@
 
 package org.apache.spark.sql.catalyst.expressions.xml
 
-import org.apache.spark.sql.catalyst.analysis.{FunctionRegistry, TypeCheckResult}
-import org.apache.spark.sql.catalyst.analysis.TypeCheckResult.DataTypeMismatch
+import org.apache.spark.sql.catalyst.analysis.FunctionRegistry
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.catalyst.expressions.Cast._
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.util.GenericArrayData
 import org.apache.spark.sql.types._
@@ -41,23 +39,9 @@ abstract class XPathExtract
 
   override def inputTypes: Seq[AbstractDataType] = Seq(StringType, StringType)
 
-  override def checkInputDataTypes(): TypeCheckResult = {
-    if (!path.foldable) {
-      DataTypeMismatch(
-        errorSubClass = "NON_FOLDABLE_INPUT",
-        messageParameters = Map(
-          "inputName" -> "path",
-          "inputType" -> toSQLType(StringType),
-          "inputExpr" -> toSQLExpr(path)
-        )
-      )
-    } else {
-      super.checkInputDataTypes()
-    }
-  }
-
   @transient protected lazy val xpathUtil = new UDFXPathUtil
-  @transient protected lazy val pathString: String = path.eval().asInstanceOf[UTF8String].toString
+  // @transient protected lazy val pathString: String =
+  // path.eval().asInstanceOf[UTF8String].toString
 
   /** Concrete implementations need to override the following three methods. */
   def xml: Expression
@@ -80,6 +64,7 @@ case class XPathBoolean(xml: Expression, path: Expression) extends XPathExtract 
   override def prettyName: String = "xpath_boolean"
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     xpathUtil.evalBoolean(xml.asInstanceOf[UTF8String].toString, pathString)
   }
 
@@ -103,6 +88,7 @@ case class XPathShort(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = ShortType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalNumber(xml.asInstanceOf[UTF8String].toString, pathString)
     if (ret eq null) null else ret.shortValue()
   }
@@ -127,6 +113,7 @@ case class XPathInt(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = IntegerType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalNumber(xml.asInstanceOf[UTF8String].toString, pathString)
     if (ret eq null) null else ret.intValue()
   }
@@ -151,6 +138,7 @@ case class XPathLong(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = LongType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalNumber(xml.asInstanceOf[UTF8String].toString, pathString)
     if (ret eq null) null else ret.longValue()
   }
@@ -175,6 +163,7 @@ case class XPathFloat(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = FloatType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalNumber(xml.asInstanceOf[UTF8String].toString, pathString)
     if (ret eq null) null else ret.floatValue()
   }
@@ -200,6 +189,7 @@ case class XPathDouble(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = DoubleType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalNumber(xml.asInstanceOf[UTF8String].toString, pathString)
     if (ret eq null) null else ret.doubleValue()
   }
@@ -224,6 +214,7 @@ case class XPathString(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = StringType
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val ret = xpathUtil.evalString(xml.asInstanceOf[UTF8String].toString, pathString)
     UTF8String.fromString(ret)
   }
@@ -248,6 +239,7 @@ case class XPathList(xml: Expression, path: Expression) extends XPathExtract {
   override def dataType: DataType = ArrayType(StringType, containsNull = false)
 
   override def nullSafeEval(xml: Any, path: Any): Any = {
+    val pathString = path.asInstanceOf[UTF8String].toString
     val nodeList = xpathUtil.evalNodeList(xml.asInstanceOf[UTF8String].toString, pathString)
     if (nodeList ne null) {
       val ret = new Array[UTF8String](nodeList.getLength)

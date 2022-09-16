@@ -18,7 +18,6 @@
 package org.apache.spark.sql.catalyst.expressions.xml
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.sql.catalyst.analysis.TypeCheckResult.DataTypeMismatch
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types.StringType
 
@@ -186,31 +185,5 @@ class XPathExpressionSuite extends SparkFunSuite with ExpressionEvalHelper {
       "a/*[@class='bb']/text()", Seq("b1", "c1"))
 
     testNullAndErrorBehavior(testExpr)
-  }
-
-  test("accept only literal path") {
-    def testExpr(exprCtor: (Expression, Expression) => Expression): Unit = {
-      // Validate that literal (technically this is foldable) paths are supported
-      val litPath = exprCtor(Literal("abcd"), Concat(Literal("/") :: Literal("/") :: Nil))
-      assert(litPath.checkInputDataTypes().isSuccess)
-
-      // Validate that non-foldable paths are not supported.
-      val nonLitPath = exprCtor(Literal("abcd"), NonFoldableLiteral("/"))
-      assert(nonLitPath.checkInputDataTypes() == DataTypeMismatch(
-        errorSubClass = "NON_FOLDABLE_INPUT",
-        messageParameters = Map(
-          "inputName" -> "path",
-          "inputType" -> "\"STRING\"",
-          "inputExpr" -> "\"nonfoldableliteral()\"")
-      ))
-    }
-
-    testExpr(XPathBoolean)
-    testExpr(XPathShort)
-    testExpr(XPathInt)
-    testExpr(XPathLong)
-    testExpr(XPathFloat)
-    testExpr(XPathDouble)
-    testExpr(XPathString)
   }
 }
