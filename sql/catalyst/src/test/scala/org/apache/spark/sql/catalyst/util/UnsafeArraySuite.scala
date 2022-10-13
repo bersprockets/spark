@@ -21,7 +21,7 @@ import java.time.ZoneId
 
 import scala.reflect.runtime.universe.TypeTag
 
-import org.apache.spark.{SparkConf, SparkFunSuite}
+import org.apache.spark.{SparkConf, SparkFunSuite, SparkIllegalArgumentException}
 import org.apache.spark.serializer.{JavaSerializer, KryoSerializer}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.encoders.{ExpressionEncoder, RowEncoder}
@@ -208,5 +208,19 @@ class UnsafeArraySuite extends SparkFunSuite {
     val arrayDataSer = ser.deserialize[UnsafeArrayData](ser.serialize(serialArray))
     assert(arrayDataSer.getLong(0) == 19285)
     assert(arrayDataSer.getBaseObject.asInstanceOf[Array[Byte]].length == 1024)
+  }
+
+  test("Too big message for createFreshArray") {
+    assert(intercept[SparkIllegalArgumentException] {
+      UnsafeArrayData.createFreshArray(268271216, 8)
+    }.getMessage.contains("Cannot initialize array with 268271216 elements of size 8"))
+
+  }
+
+  test("Too big message for fromPrimitiveArray") {
+    val bigArray = new Array[Long](268271216)
+    assert(intercept[SparkIllegalArgumentException] {
+      UnsafeArrayData.fromPrimitiveArray(bigArray)
+    }.getMessage.contains("Cannot initialize array with 268271216 elements of size 8"))
   }
 }

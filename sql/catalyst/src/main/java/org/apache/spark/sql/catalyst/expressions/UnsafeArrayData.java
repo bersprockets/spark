@@ -31,6 +31,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
 import org.apache.spark.sql.catalyst.util.ArrayData;
+import org.apache.spark.sql.errors.QueryExecutionErrors;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.unsafe.Platform;
 import org.apache.spark.unsafe.array.ByteArrayMethods;
@@ -423,8 +424,7 @@ public final class UnsafeArrayData extends ArrayData implements Externalizable, 
     final long valueRegionInBytes = (long)elementSize * length;
     final long totalSizeInLongs = (headerInBytes + valueRegionInBytes + 7) / 8;
     if (totalSizeInLongs > Integer.MAX_VALUE / 8) {
-      throw new UnsupportedOperationException("Cannot convert this array to unsafe format as " +
-        "it's too big.");
+      throw QueryExecutionErrors.tooManyArrayElementsError(length, elementSize);
     }
 
     final long[] data = new long[(int)totalSizeInLongs];
@@ -445,8 +445,7 @@ public final class UnsafeArrayData extends ArrayData implements Externalizable, 
     final long valueRegionInBytes = (long)elementSize * length;
     final long totalSizeInLongs = (headerInBytes + valueRegionInBytes + 7) / 8;
     if (totalSizeInLongs > Integer.MAX_VALUE / 8) {
-      throw new UnsupportedOperationException("Cannot convert this array to unsafe format as " +
-        "it's too big.");
+      throw QueryExecutionErrors.tooManyArrayElementsError(length, elementSize);
     }
 
     final long[] data = new long[(int)totalSizeInLongs];
