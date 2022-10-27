@@ -18,9 +18,10 @@
 package org.apache.spark.sql.catalyst.analysis
 
 import org.apache.spark.sql.catalyst.expressions.Attribute
-import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan}
+import org.apache.spark.sql.catalyst.plans.logical.{Generate, LeafNode, LogicalPlan}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.trees.AlwaysProcess
+import org.apache.spark.sql.types.ArrayType
 
 /**
  * Updates nullability of Attributes in a resolved LogicalPlan by using the nullability of
@@ -48,9 +49,48 @@ object UpdateAttributeNullability extends Rule[LogicalPlan] {
       // For an Attribute used by the current LogicalPlan, if it is from its children,
       // we fix the nullable field by using the nullability setting of the corresponding
       // output Attribute from the children.
-      p.transformExpressions {
+      val p2 = p.transformExpressions {
         case attr: Attribute if nullabilities.contains(attr.exprId) =>
           attr.withNullability(nullabilities(attr.exprId))
+      }
+
+      val arrayNullabilities = p.children.flatMap(c => c.output)
+        .filter(c => c.dataType.isInstanceOf[ArrayType]).groupBy(_.exprId).map {
+        case (exprId, attributes) =>
+          exprId -> attributes.exists(_.dataType.asInstanceOf[ArrayType].containsNull)
+      }
+
+      val newP = p2.transformExpressions {
+        case attr: Attribute if arrayNullabilities.contains(attr.exprId) =>
+          val dt = attr.dataType.asInstanceOf[ArrayType]
+          val newDt = dt.copy(containsNull = arrayNullabilities(attr.exprId))
+          if (dt.containsNull != newDt.containsNull) {
+            // print(s"Updating containsNull for ${attr} in operator ${p2.getClass.getName}\n")
+          }
+          attr.withDataType(newDt)
+      }
+      newP match {
+        case gen: Generate =>
+          val generator = gen.generator
+          val arrayChildren = generator.children.filter(c => c.dataType.isInstanceOf[ArrayType])
+          val arrayChildrenCN = arrayChildren.map(_.dataType.asInstanceOf[ArrayType].containsNull)
+          // print(s"Generator ${generator} child containsNull is ${arrayChildrenCN}, output is\n")
+          gen.generatorOutput.foreach { a =>
+            // print(s"  ${a}, nullable ${a.nullable}\n")
+          }
+        case _ =>
+      }
+      newP match {
+        case gen: Generate =>
+          val schemaOutput = gen.generator.elementSchema.zip(gen.generatorOutput)
+          val newGenOutput = schemaOutput.map { case (sf, a) =>
+            a.withNullability(sf.nullable)
+          }
+          val newGen = gen.copy(generatorOutput = newGenOutput)
+          // print(s"newP output: ${newP.output}, newGen output ${newGen.output}\n")
+          newGen
+        case lp @_ =>
+          lp
       }
   }
 }
