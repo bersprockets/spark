@@ -46,13 +46,6 @@ object UpdateAttributeNullability extends Rule[LogicalPlan] {
         // the conflict of nullable field. We do not really expect this to happen.
         case (exprId, attributes) => exprId -> attributes.exists(_.nullable)
       }
-      // For an Attribute used by the current LogicalPlan, if it is from its children,
-      // we fix the nullable field by using the nullability setting of the corresponding
-      // output Attribute from the children.
-      val p2 = p.transformExpressions {
-        case attr: Attribute if nullabilities.contains(attr.exprId) =>
-          attr.withNullability(nullabilities(attr.exprId))
-      }
 
       val arrayNullabilities = p.children.flatMap(c => c.output)
         .filter(c => c.dataType.isInstanceOf[ArrayType]).groupBy(_.exprId).map {
@@ -60,35 +53,33 @@ object UpdateAttributeNullability extends Rule[LogicalPlan] {
           exprId -> attributes.exists(_.dataType.asInstanceOf[ArrayType].containsNull)
       }
 
-      val newP = p2.transformExpressions {
-        case attr: Attribute if arrayNullabilities.contains(attr.exprId) =>
-          val dt = attr.dataType.asInstanceOf[ArrayType]
-          val newDt = dt.copy(containsNull = arrayNullabilities(attr.exprId))
-          if (dt.containsNull != newDt.containsNull) {
-            // print(s"Updating containsNull for ${attr} in operator ${p2.getClass.getName}\n")
+      // For an Attribute used by the current LogicalPlan, if it is from its children,
+      // we fix the nullable field by using the nullability setting of the corresponding
+      // output Attribute from the children.
+      // Similarly, we fix the containsNull field for array type attributes by using
+      // the containsNull setting of the corresponding output Attribute from the children.
+      val p2 = p.transformExpressions {
+        case attr: Attribute if nullabilities.contains(attr.exprId) =>
+          val newAttr = attr.withNullability(nullabilities(attr.exprId))
+          if (arrayNullabilities.contains(newAttr.exprId)) {
+            val dt = attr.dataType.asInstanceOf[ArrayType]
+            val newDt = dt.copy(containsNull = arrayNullabilities(attr.exprId))
+            newAttr.withDataType(newDt)
+          } else {
+            newAttr
           }
-          attr.withDataType(newDt)
       }
-      newP match {
-        case gen: Generate =>
-          val generator = gen.generator
-          val arrayChildren = generator.children.filter(c => c.dataType.isInstanceOf[ArrayType])
-          val arrayChildrenCN = arrayChildren.map(_.dataType.asInstanceOf[ArrayType].containsNull)
-          // print(s"Generator ${generator} child containsNull is ${arrayChildrenCN}, output is\n")
-          gen.generatorOutput.foreach { a =>
-            // print(s"  ${a}, nullable ${a.nullable}\n")
-          }
-        case _ =>
-      }
-      newP match {
+
+      // if this is a Generate operator, we need to fix generatorOutput, since it
+      // is not dynamically determined but explicitly set (usually by
+      // `ResolveGenerate`).
+      p2 match {
         case gen: Generate =>
           val schemaOutput = gen.generator.elementSchema.zip(gen.generatorOutput)
           val newGenOutput = schemaOutput.map { case (sf, a) =>
             a.withNullability(sf.nullable)
           }
-          val newGen = gen.copy(generatorOutput = newGenOutput)
-          // print(s"newP output: ${newP.output}, newGen output ${newGen.output}\n")
-          newGen
+          gen.copy(generatorOutput = newGenOutput)
         case lp @_ =>
           lp
       }
