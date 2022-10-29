@@ -70,7 +70,7 @@ object UpdateAttributeNullability extends Rule[LogicalPlan] {
           }
       }
 
-      // if this is a Generate operator, we need to fix generatorOutput, since it
+      // If this is a Generate operator, we need to fix generatorOutput, since it
       // is not dynamically determined but explicitly set (usually by
       // `ResolveGenerate`).
       p2 match {

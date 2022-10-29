@@ -426,7 +426,9 @@ class GeneratorFunctionSuite extends QueryTest with SharedSparkSession {
     }
   }
 
-  test("Generator output has correct nullability") {
+  test("SPARK-40963: generator output has correct nullability") {
+    // This test does not check nullability directly. Before SPARK-40963,
+    // the below query got wrong results due to incorrect nullability.
     val df = sql(
       """select c1, explode(c4) as c5 from (
         |  select c1, array(c3) as c4 from (
