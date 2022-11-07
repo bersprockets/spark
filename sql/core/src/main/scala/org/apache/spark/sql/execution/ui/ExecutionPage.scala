@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.execution.ui
 
+import java.util.NoSuchElementException
 import javax.servlet.http.HttpServletRequest
 
 import scala.xml.Node
@@ -83,16 +84,24 @@ class ExecutionPage(parent: SQLTab) extends WebUIPage("execution") with Logging 
         </div>
 
       val metrics = sqlStore.executionMetrics(executionId)
-      val graph = sqlStore.planGraph(executionId)
+      val graphOpt = try {
+        Some(sqlStore.planGraph(executionId))
+      } catch {
+        case e: NoSuchElementException => None
+      }
 
-      summary ++
-        planVisualization(request, metrics, graph) ++
-        physicalPlanDescription(executionUIData.physicalPlanDescription) ++
-        modifiedConfigs(
-          executionUIData.modifiedConfigs.filterKeys(
-            !_.startsWith(pandasOnSparkConfPrefix)).toMap) ++
-        modifiedPandasOnSparkConfigs(
-          executionUIData.modifiedConfigs.filterKeys(_.startsWith(pandasOnSparkConfPrefix)).toMap)
+      graphOpt.map { graph =>
+        summary ++
+          planVisualization(request, metrics, graph) ++
+          physicalPlanDescription(executionUIData.physicalPlanDescription) ++
+          modifiedConfigs(
+            executionUIData.modifiedConfigs.filterKeys(
+              !_.startsWith(pandasOnSparkConfPrefix)).toMap) ++
+          modifiedPandasOnSparkConfigs(
+            executionUIData.modifiedConfigs.filterKeys(_.startsWith(pandasOnSparkConfPrefix)).toMap)
+      }.getOrElse {
+        <div>Physical plan not yet created</div>
+      }
     }.getOrElse {
       <div>No information to display for query {executionId}</div>
     }
