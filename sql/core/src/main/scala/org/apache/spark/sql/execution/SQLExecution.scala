@@ -66,8 +66,6 @@ object SQLExecution {
     val sc = sparkSession.sparkContext
     val oldExecutionId = sc.getLocalProperty(EXECUTION_ID_KEY)
     val executionId = SQLExecution.nextExecutionId
-    sc.setLocalProperty(EXECUTION_ID_KEY, executionId.toString)
-    executionIdToQueryExecution.put(executionId, queryExecution)
     try {
       // sparkContext.getCallSite() would first try to pick up any call site that was previously
       // set, then fall back to Utils.getCallSite(); call Utils.getCallSite() directly on
@@ -95,6 +93,9 @@ object SQLExecution {
       withSQLConfPropagated(sparkSession) {
         var ex: Option[Throwable] = None
         val startTime = System.nanoTime()
+        val sparkPlanInfo = SparkPlanInfo.fromSparkPlan(queryExecution.executedPlan)
+        sc.setLocalProperty(EXECUTION_ID_KEY, executionId.toString)
+        executionIdToQueryExecution.put(executionId, queryExecution)
         try {
           sc.listenerBus.post(SparkListenerSQLExecutionStart(
             executionId = executionId,
@@ -103,7 +104,7 @@ object SQLExecution {
             physicalPlanDescription = queryExecution.explainString(planDescriptionMode),
             // `queryExecution.executedPlan` triggers query planning. If it fails, the exception
             // will be caught and reported in the `SparkListenerSQLExecutionEnd`
-            sparkPlanInfo = SparkPlanInfo.fromSparkPlan(queryExecution.executedPlan),
+            sparkPlanInfo = sparkPlanInfo,
             time = System.currentTimeMillis(),
             redactedConfigs))
           body
