@@ -107,7 +107,12 @@ class SQLAppStatusListener(
         } catch {
           case _: NoSuchElementException => None
         }
-      }.getOrElse(getOrCreateExecution(executionId))
+      }.getOrElse {
+        val led = getOrCreateExecution(executionId)
+        led.description = "Planning"
+        led.submissionTime = System.currentTimeMillis()
+        led
+    }
 
     // Record the accumulator IDs and metric types for the stages of this job, so that the code
     // that keeps track of the metrics knows which accumulators to look at.
