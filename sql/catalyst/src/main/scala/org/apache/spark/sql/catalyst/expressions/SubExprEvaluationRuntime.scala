@@ -22,9 +22,10 @@ import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.google.common.util.concurrent.{ExecutionError, UncheckedExecutionException}
 
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.ExpressionUtils._
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.errors.QueryExecutionErrors
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.types.{DataType, NumericType}
 
 /**
  * This class helps subexpression elimination for interpreted evaluation
@@ -32,7 +33,7 @@ import org.apache.spark.sql.types.DataType
  * This class wraps `ExpressionProxy` around given expressions. The `ExpressionProxy`
  * intercepts expression evaluation and loads from the cache first.
  */
-class SubExprEvaluationRuntime(cacheMaxEntries: Int) {
+class SubExprEvaluationRuntime(cacheMaxEntries: Int, ignoreLightweight: Boolean = false) {
   // The id assigned to `ExpressionProxy`. `SubExprEvaluationRuntime` will use assigned ids of
   // `ExpressionProxy` to decide the equality when loading from cache. `SubExprEvaluationRuntime`
   // won't be use by multi-threads so we don't need to consider concurrency here.
@@ -93,15 +94,17 @@ class SubExprEvaluationRuntime(cacheMaxEntries: Int) {
 
     val commonExprs = equivalentExpressions.getCommonSubexpressions
     commonExprs.foreach { expr =>
-      val proxy = ExpressionProxy(expr, proxyExpressionCurrentId, this)
-      proxyExpressionCurrentId += 1
+      if (!isLightweight(expr)) {
+        val proxy = ExpressionProxy(expr, proxyExpressionCurrentId, this)
+        proxyExpressionCurrentId += 1
 
-      // We leverage `IdentityHashMap` so we compare expression keys by reference here.
-      // So for example if there are one group of common exprs like Seq(common expr 1,
-      // common expr2, ..., common expr n), we will insert into `proxyMap` some key/value
-      // pairs like Map(common expr 1 -> proxy(common expr 1), ...,
-      // common expr n -> proxy(common expr 1)).
-      proxyMap.put(expr, proxy)
+        // We leverage `IdentityHashMap` so we compare expression keys by reference here.
+        // So for example if there are one group of common exprs like Seq(common expr 1,
+        // common expr2, ..., common expr n), we will insert into `proxyMap` some key/value
+        // pairs like Map(common expr 1 -> proxy(common expr 1), ...,
+        // common expr n -> proxy(common expr 1)).
+        proxyMap.put(expr, proxy)
+      }
     }
 
     // Only adding proxy if we find subexpressions.
@@ -110,6 +113,22 @@ class SubExprEvaluationRuntime(cacheMaxEntries: Int) {
     } else {
       expressions
     }
+  }
+
+  def isLightweight(exp: Expression): Boolean = {
+    if (getExpressionHeight(exp) > 7 || !ignoreLightweight) {
+      return false
+    }
+
+    exp.map {
+      case u: UnaryExpression if u.child.dataType.isInstanceOf[NumericType] &&
+          u.dataType.isInstanceOf[NumericType] => true
+      case b: BinaryExpression if b.children.forall(_.dataType.isInstanceOf[NumericType]) &&
+          b.dataType.isInstanceOf[NumericType] => true
+      case _: BoundReference => true
+      case _: Literal => true
+      case _ => false
+    }.forall(identity)
   }
 }
 

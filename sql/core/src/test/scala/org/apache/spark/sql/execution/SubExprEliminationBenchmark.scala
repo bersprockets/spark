@@ -122,7 +122,7 @@ object SubExprEliminationBenchmark extends SqlBasedBenchmark {
     try f finally tableNames.foreach(spark.catalog.dropTempView)
   }
 
-  def lightweighSubexprs(rowsNum: Int, numIters: Int): Unit = {
+  def lightweightSubexprs(rowsNum: Int, numIters: Int): Unit = {
     val benchmark = new Benchmark("lightweight subexprs in Project", rowsNum, output = output)
 
     withTempTable("t1") {
@@ -161,12 +161,53 @@ object SubExprEliminationBenchmark extends SqlBasedBenchmark {
     }
   }
 
+  def tallSubexprs(rowsNum: Int, numIters: Int): Unit = {
+    val benchmark = new Benchmark("tall subexprs in Project", rowsNum, output = output)
+
+    withTempTable("t1") {
+      prepareDataInfo(benchmark)
+      spark.range(rowsNum).toDF("col0").createOrReplaceTempView("t1")
+
+      val numExprs = 2
+      val cols = (0 until numExprs).map { idx =>
+        ($"col0" + $"col0" + $"col0" + $"col0" + $"col0" + $"col0" + $"col0" + $"col0")
+          .alias(s"c$idx")
+      }
+
+      Seq(
+        ("false", "true", "CODEGEN_ONLY"),
+        ("false", "false", "NO_CODEGEN"),
+        ("true", "true", "CODEGEN_ONLY"),
+        ("true", "false", "NO_CODEGEN")
+      ).foreach { case (subExprEliminationEnabled, codegenEnabled, codegenFactory) =>
+        // We only benchmark subexpression performance under codegen/non-codegen, so disabling
+        // json optimization.
+        val caseName = s"subExprElimination $subExprEliminationEnabled, codegen: $codegenEnabled"
+        benchmark.addCase(caseName, numIters) { _ =>
+          withSQLConf(
+            SQLConf.SUBEXPRESSION_ELIMINATION_ENABLED.key -> subExprEliminationEnabled,
+            SQLConf.WHOLESTAGE_CODEGEN_ENABLED.key -> codegenEnabled,
+            SQLConf.CODEGEN_FACTORY_MODE.key -> codegenFactory,
+            SQLConf.JSON_EXPRESSION_OPTIMIZATION.key -> "false") {
+            val df = spark.read
+              .table("t1")
+              .select(cols: _*)
+            df.write.mode("overwrite").format("noop").save()
+          }
+        }
+      }
+
+      benchmark.run()
+    }
+  }
+
   override def runBenchmarkSuite(mainArgs: Array[String]): Unit = {
     val numIters = 3
     runBenchmark("Benchmark for performance of subexpression elimination") {
-      /* withFromJson(100, numIters)
-      withFilter(100, numIters) */
-      lightweighSubexprs(20000000, numIters)
+      withFromJson(100, numIters)
+      withFilter(100, numIters)
+      lightweightSubexprs(20000000, numIters)
+      tallSubexprs(2000000, numIters)
     }
   }
 }

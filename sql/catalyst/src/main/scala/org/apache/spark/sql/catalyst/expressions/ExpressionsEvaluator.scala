@@ -22,7 +22,7 @@ import org.apache.spark.sql.internal.SQLConf
 // A helper class to evaluate expressions.
 trait ExpressionsEvaluator {
   protected lazy val runtime =
-    new SubExprEvaluationRuntime(SQLConf.get.subexpressionEliminationCacheMaxEntries)
+    new SubExprEvaluationRuntime(SQLConf.get.subexpressionEliminationCacheMaxEntries, true)
 
   protected def prepareExpressions(
       exprs: Seq[Expression],
