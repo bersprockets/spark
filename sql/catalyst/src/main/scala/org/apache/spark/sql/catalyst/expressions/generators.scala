@@ -287,16 +287,28 @@ case class ReplicateRows(children: Seq[Expression]) extends Generator with Codeg
       case (e, index) => StructField(s"col$index", e.dataType)
     })
 
+  class Repeater(row: InternalRow, count: Long) extends Iterator[InternalRow] {
+    var remaining = count
+
+    override def hasNext(): Boolean = {
+      remaining > 0;
+    }
+
+    override def next(): InternalRow = {
+      remaining -= 1
+      row
+    }
+  }
+
   override def eval(input: InternalRow): TraversableOnce[InternalRow] = {
     val numRows = children.head.eval(input).asInstanceOf[Long]
     val values = children.tail.map(_.eval(input)).toArray
-    Range.Long(0, numRows, 1).map { _ =>
-      val fields = new Array[Any](numColumns)
-      for (col <- 0 until numColumns) {
-        fields.update(col, values(col))
-      }
-      InternalRow(fields: _*)
+    val fields = new Array[Any](numColumns)
+    for (col <- 0 until numColumns) {
+      fields.update(col, values(col))
     }
+    val internalRow = InternalRow(fields: _*)
+    new Repeater(internalRow, numRows)
   }
 
   override protected def withNewChildrenInternal(
