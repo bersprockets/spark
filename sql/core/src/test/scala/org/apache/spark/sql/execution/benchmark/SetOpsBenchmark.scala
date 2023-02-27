@@ -68,9 +68,29 @@ object SetOpsBenchmark extends SqlBasedBenchmark {
     }
   }
 
+  def exceptAllWithWideRows(): Unit = {
+    val ct1 = 1000000    // the number of rows in first table
+    val dupCt = 100       // the number of dup rows per key
+    val keyCt = ct1/dupCt // the number of unique keys
+    val ct2 = 100         // the number of rows in second table
+    val colCount = 50
+    val selectExprs = (0 until colCount).map(x => s"id % $keyCt as col${x}")
+    val tbl1 = spark.range(ct1).selectExpr(selectExprs: _*)
+    tbl1.persist()
+    tbl1.count()
+    val tbl2 = spark.range(ct2).selectExpr(selectExprs: _*)
+    tbl2.persist()
+    tbl2.count()
+    codegenBenchmark("Except All With Wide Rows", ct1) {
+      val df = tbl1.exceptAll(tbl2)
+      df.noop()
+    }
+  }
+
   override def runBenchmarkSuite(mainArgs: Array[String]): Unit = {
     exceptAllWithManyDuplicates()
     exceptAllWithSomeDuplicates()
     exceptAllWithNoDuplicates()
+    exceptAllWithWideRows()
   }
 }
