@@ -274,31 +274,31 @@ case class Stack(children: Seq[Expression]) extends Generator {
     copy(children = newChildren)
 }
 
+class RowRepeater(row: InternalRow, count: Long) extends Iterator[InternalRow] {
+  var remaining = count
+
+  override def hasNext(): Boolean = {
+    remaining > 0;
+  }
+
+  override def next(): InternalRow = {
+    remaining -= 1
+    row
+  }
+}
+
 /**
  * Replicate the row N times. N is specified as the first argument to the function.
  * This is an internal function solely used by optimizer to rewrite EXCEPT ALL AND
  * INTERSECT ALL queries.
  */
-case class ReplicateRows(children: Seq[Expression]) extends Generator with CodegenFallback {
+case class ReplicateRows(children: Seq[Expression]) extends Generator {
   private lazy val numColumns = children.length - 1 // remove the multiplier value from output.
 
   override def elementSchema: StructType =
     StructType(children.tail.zipWithIndex.map {
       case (e, index) => StructField(s"col$index", e.dataType)
     })
-
-  class Repeater(row: InternalRow, count: Long) extends Iterator[InternalRow] {
-    var remaining = count
-
-    override def hasNext(): Boolean = {
-      remaining > 0;
-    }
-
-    override def next(): InternalRow = {
-      remaining -= 1
-      row
-    }
-  }
 
   override def eval(input: InternalRow): TraversableOnce[InternalRow] = {
     val numRows = children.head.eval(input).asInstanceOf[Long]
@@ -308,7 +308,29 @@ case class ReplicateRows(children: Seq[Expression]) extends Generator with Codeg
       fields.update(col, values(col))
     }
     val internalRow = InternalRow(fields: _*)
-    new Repeater(internalRow, numRows)
+    new RowRepeater(internalRow, numRows)
+  }
+
+  override def supportCodegen: Boolean = true
+
+  override protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    print("Generating code for RepeatRows\n")
+    val numRowsData = ctx.addMutableState("long", "numRows",
+      v => s"$v = 0;")
+    val numRowsEval = children.head.genCode(ctx)
+    val numRowsCode = s"${numRowsEval.code}\n$numRowsData = ${numRowsEval.value};"
+
+    val rowData = ctx.addMutableState("InternalRow", "internalRow",
+      v => s"$v = null;")
+    val rowDataEval = CreateStruct(children.tail).genCode(ctx)
+    val rowDataCode = s"${rowDataEval.code}\n$rowData = ${rowDataEval.value};"
+    val repeaterClass = classOf[RowRepeater].getName
+    ev.copy(code =
+      code"""
+         |$numRowsCode
+         |$rowDataCode
+         |$repeaterClass ${ev.value} = new $repeaterClass($rowData, $numRowsData);
+       """.stripMargin, isNull = FalseLiteral)
   }
 
   override protected def withNewChildrenInternal(
