@@ -158,9 +158,10 @@ class OrcSerializer(dataSchema: StructType) {
       } else {
         None
       }
+      val fieldConverters = st.map(_.dataType).map(newConverter(_, reuseObj)).toArray
       (getter, ordinal) =>
+        // val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
         val result = resultOpt.getOrElse(createOrcValue(typeDesc).asInstanceOf[OrcStruct])
-        val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
         val numFields = st.length
         val struct = getter.getStruct(ordinal, numFields)
         var i = 0
@@ -174,21 +175,23 @@ class OrcSerializer(dataSchema: StructType) {
         }
         result
 
-    case ArrayType(elementType, _) => (getter, ordinal) =>
-      val result = createOrcValue(dataType).asInstanceOf[OrcList[WritableComparable[_]]]
-      // Need to put all converted values to a list, can't reuse object.
-      val elementConverter = newConverter(elementType, reuseObj = false)
-      val array = getter.getArray(ordinal)
-      var i = 0
-      while (i < array.numElements()) {
-        if (array.isNullAt(i)) {
-          result.add(null)
-        } else {
-          result.add(elementConverter(array, i))
+    case ArrayType(elementType, _) =>
+      val typeDesc = OrcUtils.orcTypeDescription(dataType)
+      (getter, ordinal) =>
+        val result = createOrcValue(typeDesc).asInstanceOf[OrcList[WritableComparable[_]]]
+        // Need to put all converted values to a list, can't reuse object.
+        val elementConverter = newConverter(elementType, reuseObj = false)
+        val array = getter.getArray(ordinal)
+        var i = 0
+        while (i < array.numElements()) {
+          if (array.isNullAt(i)) {
+            result.add(null)
+          } else {
+            result.add(elementConverter(array, i))
+          }
+          i += 1
         }
-        i += 1
-      }
-      result
+        result
 
     case MapType(keyType, valueType, _) => (getter, ordinal) =>
       val result = createOrcValue(dataType)
