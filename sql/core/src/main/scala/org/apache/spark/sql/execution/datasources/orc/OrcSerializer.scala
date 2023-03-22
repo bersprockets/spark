@@ -152,16 +152,10 @@ class OrcSerializer(dataSchema: StructType) {
       OrcShimUtils.getHiveDecimalWritable(precision, scale)
 
     case st: StructType =>
-      val typeDesc = OrcUtils.orcTypeDescription(dataType)
-      val resultOpt = if (reuseObj) {
-        Some(createOrcValue(typeDesc).asInstanceOf[OrcStruct])
-      } else {
-        None
-      }
       val fieldConverters = st.map(_.dataType).map(newConverter(_, reuseObj)).toArray
+      val typeDesc = OrcUtils.orcTypeDescription(dataType)
       (getter, ordinal) =>
-        // val fieldConverters = st.map(_.dataType).map(newConverter(_)).toArray
-        val result = resultOpt.getOrElse(createOrcValue(typeDesc).asInstanceOf[OrcStruct])
+        val result = createOrcValue(typeDesc).asInstanceOf[OrcStruct]
         val numFields = st.length
         val struct = getter.getStruct(ordinal, numFields)
         var i = 0
