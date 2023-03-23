@@ -81,24 +81,6 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
     }
   }
 
-  def writeNestedInt(
-      table: String,
-      format: String,
-      benchmark: Benchmark,
-      elementCount: Int): Unit = {
-    if (format == "CSV") {
-      return
-    }
-    spark.sql(s"CREATE TABLE $table(c1 array<int>) USING $format")
-    val limit = numRows / elementCount
-    val elements = ("cast(id as int)," * elementCount).init
-    val selectExpr = s"array($elements) as c1"
-    benchmark.addCase(s"Output Nested Int Column $elementCount Elements") { _ =>
-      spark.sql(s"INSERT OVERWRITE TABLE $table SELECT $selectExpr " +
-        s"FROM $tempTable limit $limit")
-    }
-  }
-
   def writeNestedStruct(
     table: String,
     format: String,
@@ -133,14 +115,13 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
     val tableStructNarrow = "tableStructNarrow"
     val tableStructMedium = "tableStructMedium"
     val tableStructWide = "tableStructWide"
-    val tableNestedInt = "tableNestedInt"
     val tableNestedStructMedium = "tableNestedStructMedium"
     val tableNestedStructWide1 = "tableNestedStructWide1"
     val tableNestedStructWide2 = "tableNestedStructWide2"
     withTempTable(tempTable) {
       spark.range(numRows).createOrReplaceTempView(tempTable)
       withTable(tableInt, tableDouble, tableIntString, tablePartition, tableBucket,
-          tableStructNarrow, tableStructMedium, tableStructWide, tableNestedInt,
+          tableStructNarrow, tableStructMedium, tableStructWide,
         tableNestedStructMedium, tableNestedStructWide1, tableNestedStructWide2) {
         val writerName = extraInfo match {
           case Some(extra) => s"$format($extra)"
@@ -156,7 +137,6 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
         writeStruct(tableStructNarrow, format, benchmark, 10)
         writeStruct(tableStructMedium, format, benchmark, 100)
         writeStruct(tableStructWide, format, benchmark, 600)
-        writeNestedInt(tableNestedInt, format, benchmark, 100)
         writeNestedStruct(tableNestedStructMedium, format, benchmark, 10, 10)
         writeNestedStruct(tableNestedStructWide1, format, benchmark, 60, 10)
         writeNestedStruct(tableNestedStructWide2, format, benchmark, 10, 60)
