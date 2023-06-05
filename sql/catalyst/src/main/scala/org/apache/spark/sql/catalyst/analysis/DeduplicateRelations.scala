@@ -38,6 +38,8 @@ case class RelationWrapper(cls: Class[_], outputAttrIds: Seq[Long])
 object DeduplicateRelations extends Rule[LogicalPlan] {
   override def apply(plan: LogicalPlan): LogicalPlan = {
     val newPlan = renewDuplicatedRelations(mutable.HashSet.empty, plan)._1
+    // print(s"dr: old plan: ${plan}\n")
+    // print(s"dr. new plan: ${newPlan}\n")
     if (newPlan.find(p => p.resolved && p.missingInput.nonEmpty).isDefined) {
       // Wait for `ResolveMissingReferences` to resolve missing attributes first
       return newPlan
@@ -104,6 +106,37 @@ object DeduplicateRelations extends Rule[LogicalPlan] {
         existingRelations.add(planWrapper)
         (m, false)
       }
+
+    case plan: CoGroup =>
+      val (leftRenewed, leftChanged) = renewDuplicatedRelations(existingRelations, plan.left)
+      val (rightRenewed, rightChanged) = renewDuplicatedRelations(existingRelations, plan.right)
+
+      val newishPlan = if (leftChanged) {
+        if (leftRenewed.resolved) {
+          CoGroup.updateLeft(plan, leftRenewed)
+        } else {
+          plan.copy(left = leftRenewed)
+        }
+      } else {
+        plan
+      }
+
+      // print(s"existing relations after left check: ${existingRelations}\n")
+
+      val newPlan = if (rightChanged) {
+        if (rightRenewed.resolved) {
+          CoGroup.updateRight(newishPlan, rightRenewed)
+        } else {
+          newishPlan.copy(right = rightRenewed)
+        }
+      } else {
+        newishPlan
+      }
+
+      // print(s"cgdd: old plan: ${plan}\n")
+      // print(s"cdgg: new plan: ${newPlan}\n")
+
+      (newPlan, leftChanged || rightChanged)
 
     case plan: LogicalPlan =>
       var planChanged = false

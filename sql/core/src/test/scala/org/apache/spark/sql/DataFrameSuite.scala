@@ -24,6 +24,7 @@ import java.sql.{Date, Timestamp}
 import java.util.{Locale, UUID}
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.JavaConverters._
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.Random
 
@@ -2909,6 +2910,52 @@ class DataFrameSuite extends QueryTest
       },
       errorClass = "UNRESOLVED_COLUMN.WITH_SUGGESTION",
       parameters = Map("objectName" -> "`d`", "proposal" -> "`a`, `b`, `c`"))
+  }
+
+  test("cogroup_oddity") {
+    val inputRows = Seq(
+      Row(1L, 2L),
+      Row(1L, 3L),
+      Row(2L, 7L))
+
+    val inputType = StructType.fromDDL("k bigint, v bigint")
+    val input = spark.createDataFrame(inputRows.asJava, inputType)
+
+    val keyType = StructType.fromDDL("k bigint")
+
+    val group1 = input.groupBy("k").as(RowEncoder(keyType), RowEncoder(inputType))
+    val group2 = input.groupBy("k").as(RowEncoder(keyType), RowEncoder(inputType))
+
+    val df = group1.cogroup(group2) { case (k, left, right) =>
+      val leftVals = left.map(_.getLong(1)).toSeq
+      val rightVals = right.map(_.getLong(1)).toSeq
+      Seq((k.getLong(0), leftVals, rightVals)).toIterator
+    }.toDF("c1", "c2", "c3")
+
+    checkAnswer(df, Row(1L, Array(2L, 3L), Array(2L, 3L)) ::
+      Row(2L, Array(7L), Array(7L)) :: Nil)
+  }
+
+    test("cogroup_odditay") {
+    val input = Seq(
+      (1L, 2L),
+      (1L, 3L),
+      (2L, 7L)).toDF("k", "v")
+
+    val inputType = StructType.fromDDL("k bigint, v bigint")
+    val keyType = StructType.fromDDL("k bigint")
+
+    val group1 = input.groupBy("k").as(RowEncoder(keyType), RowEncoder(inputType))
+    val group2 = input.groupBy("k").as(RowEncoder(keyType), RowEncoder(inputType))
+
+    val df = group1.cogroup(group2) { case (k, left, right) =>
+      val leftVals = left.map(_.getLong(1)).toSeq
+      val rightVals = right.map(_.getLong(1)).toSeq
+      Seq((k.getLong(0), leftVals, rightVals)).toIterator
+    }.toDF("c1", "c2", "c3")
+
+    checkAnswer(df, Row(1L, Array(2L, 3L), Array(2L, 3L)) ::
+      Row(2L, Array(7L), Array(7L)) :: Nil)
   }
 
   test("SPARK-40601: flatMapCoGroupsInPandas should fail with different number of keys") {

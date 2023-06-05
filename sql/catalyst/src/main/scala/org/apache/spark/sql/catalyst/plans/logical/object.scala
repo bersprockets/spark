@@ -696,6 +696,77 @@ object CoGroup {
       right)
     CatalystSerde.serialize[OUT](cogrouped)
   }
+
+  private def makeNewAttribute(origAttr: Attribute, modelAttr: Attribute): Attribute = {
+    AttributeReference(
+      origAttr.name,
+      modelAttr.dataType,
+      origAttr.nullable,
+      origAttr.metadata)(
+      modelAttr.exprId, origAttr.qualifier)
+  }
+
+  private def patchExpression(exp: Expression, attrMap: AttributeMap[Attribute],
+      debug: Boolean = false): Expression = {
+    exp.transformDown {
+      case u @ UnresolvedDeserializer(_, inputAttributes)
+          if inputAttributes.exists(attrMap.get(_).isDefined) =>
+        val newInputAttributes = inputAttributes.map { a =>
+          val b = attrMap.getOrElse(a, a)
+          makeNewAttribute(a, b)
+        }
+        u.copy(inputAttributes = newInputAttributes)
+      case a: Attribute if attrMap.get(a).isDefined =>
+        val b = attrMap.get(a).get
+        if (debug) print(s"For a of ${a}, b is ${b}\n")
+        // this logic take from QueryPlan#updateAttr
+        makeNewAttribute(a, b)
+      case e @ _ =>
+        if (debug) print(s"Passing through ${e}\n")
+        e
+    }
+  }
+
+  private def patchExpressions(exps: Seq[Expression],
+      attrMap: AttributeMap[Attribute]): Seq[Expression] =
+    exps.map(patchExpression(_, attrMap))
+
+  private def makeAttributeMap(oldPlan: LogicalPlan,
+      newPlan: LogicalPlan): AttributeMap[Attribute] = {
+    AttributeMap(
+      oldPlan
+        .output.zip(newPlan.output)
+        .filter { case (a1, a2) => a1.exprId != a2.exprId }
+    )
+  }
+
+  def updateLeft(plan: CoGroup, newLeft: LogicalPlan): CoGroup = {
+    val attrMap = makeAttributeMap(plan.left, newLeft)
+    val newLeftDeser = patchExpression(plan.leftDeserializer, attrMap)
+    val newLeftGroup = patchExpressions(plan.leftGroup, attrMap).map(_.asInstanceOf[Attribute])
+    val newLeftAttr = patchExpressions(plan.leftAttr, attrMap).map(_.asInstanceOf[Attribute])
+    val newLeftOrder = patchExpressions(plan.leftOrder, attrMap).map(_.asInstanceOf[SortOrder])
+    plan.copy(leftDeserializer = newLeftDeser,
+      leftGroup = newLeftGroup,
+      leftAttr = newLeftAttr,
+      leftOrder = newLeftOrder,
+      left = newLeft)
+  }
+
+  def updateRight(plan: CoGroup, newRight: LogicalPlan): CoGroup = {
+    val attrMap = makeAttributeMap(plan.right, newRight)
+    val newRightDeser = patchExpression(plan.rightDeserializer, attrMap, false)
+    // print(s"Old rightDeserializer is ${plan.rightDeserializer}\n")
+    // print(s"New rightDeserializer is ${newRightDeser}\n")
+    val newRightGroup = patchExpressions(plan.rightGroup, attrMap).map(_.asInstanceOf[Attribute])
+    val newRightAttr = patchExpressions(plan.rightAttr, attrMap).map(_.asInstanceOf[Attribute])
+    val newRightOrder = patchExpressions(plan.rightOrder, attrMap).map(_.asInstanceOf[SortOrder])
+    plan.copy(rightDeserializer = newRightDeser,
+      rightGroup = newRightGroup,
+      rightAttr = newRightAttr,
+      rightOrder = newRightOrder,
+      right = newRight)
+  }
 }
 
 /**
@@ -716,6 +787,12 @@ case class CoGroup(
     outputObjAttr: Attribute,
     left: LogicalPlan,
     right: LogicalPlan) extends BinaryNode with ObjectProducer {
+
+  /* print(s"cogroup output is ${this.output}\n")
+  print(s"leftGroup ${leftGroup}, rightGroup ${rightGroup}\n")
+  print(s"leftAttr ${leftGroup}, rightGroup ${rightAttr}\n")
+  print(s"leftOrder ${leftOrder}, rightOrder ${rightOrder}\n") */
+
   override protected def withNewChildrenInternal(
       newLeft: LogicalPlan, newRight: LogicalPlan): CoGroup = copy(left = newLeft, right = newRight)
 }
