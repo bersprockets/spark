@@ -716,7 +716,7 @@ object CoGroup {
           makeNewAttribute(a, b)
         }
         u.copy(inputAttributes = newInputAttributes)
-      case a: Attribute if attrMap.get(a).isDefined =>
+      case a: Attribute if a.resolved && attrMap.get(a).isDefined =>
         val b = attrMap.get(a).get
         if (debug) print(s"For a of ${a}, b is ${b}\n")
         // this logic take from QueryPlan#updateAttr
