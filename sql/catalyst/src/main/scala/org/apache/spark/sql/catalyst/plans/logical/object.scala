@@ -790,7 +790,7 @@ case class CoGroup(
 
   /* print(s"cogroup output is ${this.output}\n")
   print(s"leftGroup ${leftGroup}, rightGroup ${rightGroup}\n")
-  print(s"leftAttr ${leftGroup}, rightGroup ${rightAttr}\n")
+  print(s"leftAttr ${leftAttr}, rightAttr ${rightAttr}\n")
   print(s"leftOrder ${leftOrder}, rightOrder ${rightOrder}\n") */
 
   override protected def withNewChildrenInternal(
