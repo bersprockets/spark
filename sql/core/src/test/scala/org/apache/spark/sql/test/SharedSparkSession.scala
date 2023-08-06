@@ -75,6 +75,7 @@ trait SharedSparkSessionBase
       // this rule may potentially block testing of other optimization rules such as
       // ConstantPropagation etc.
       .set(SQLConf.OPTIMIZER_EXCLUDED_RULES.key, ConvertToLocalRelation.ruleName)
+      .set(SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key, "-1")
     conf.set(
       StaticSQLConf.WAREHOUSE_PATH,
       conf.get(StaticSQLConf.WAREHOUSE_PATH) + "/" + getClass.getCanonicalName)
