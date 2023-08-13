@@ -67,6 +67,10 @@ object TestHive
         // from false to true. For details, see the JIRA HIVE-12320 and HIVE-17764.
         .set("spark.hadoop.hive.metastore.disallow.incompatible.col.type.changes", "false")
         .set(SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key, "-1")
+        .set("spark.memory.offHeap.enabled", "true")
+        .set("spark.memory.offHeap.size", "20480k")
+        .set("spark.sql.codegen.wholeStage", "false")
+        .set("spark.sql.adaptive.enabled", "false")
         // Disable ConvertToLocalRelation for better test coverage. Test cases built on
         // LocalRelation will exercise the optimization rules better by disabling it as
         // this rule may potentially block testing of other optimization rules such as
