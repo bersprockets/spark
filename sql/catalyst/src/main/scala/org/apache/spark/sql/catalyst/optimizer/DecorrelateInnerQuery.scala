@@ -217,6 +217,7 @@ object DecorrelateInnerQuery extends PredicateHelper {
       outerOutputSet: AttributeSet): (LogicalPlan, Seq[Expression]) = {
     val duplicates = innerPlan.outputSet.intersect(outerOutputSet)
     if (duplicates.nonEmpty) {
+      print(s">>> duplicates is ${duplicates.toSeq}\n")
       val aliasMap = AttributeMap(duplicates.map { dup =>
         dup -> Alias(dup, dup.toString)()
       })
