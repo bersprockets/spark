@@ -81,6 +81,7 @@ object RewritePredicateSubquery extends Rule[LogicalPlan] with PredicateHelper {
     val outerRefs = outerPlan.outputSet ++ outerReferences
     val duplicates = outerRefs.intersect(subplan.outputSet)
     if (duplicates.nonEmpty) {
+      print(s">>> dedupSubqueryOnSelfJoin: ${duplicates}\n")
       condition.foreach { e =>
           val conflictingAttrs = e.references.intersect(duplicates)
           if (conflictingAttrs.nonEmpty) {
