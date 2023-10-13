@@ -2730,13 +2730,8 @@ class SubquerySuite extends QueryTest
           |  WHERE a = c1
           |  OR a IN (SELECT col1 FROM t3)
           |)""".stripMargin
-      val execution = sqlContext.sessionState.executePlan(sqlContext.sql(query).logicalPlan)
-      val executedPlan = execution.executedPlan
-      val schema = executedPlan.schema
-      val result = executedPlan.executeCollectPublic()
-      assert(result.size == 3)
-      assert(result(0).size == 1)
-      assert(schema.size == 1)
+      val df = sql(query)
+      checkAnswer(df, Row(1) :: Row(2) :: Row(3) :: Nil)
     }
   }
 
