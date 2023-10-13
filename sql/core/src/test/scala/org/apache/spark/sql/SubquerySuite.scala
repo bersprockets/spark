@@ -2714,6 +2714,9 @@ class SubquerySuite extends QueryTest
 
   test("schema_oddity_1") {
     withTempView("t1", "t2", "t3") {
+      // Seq((1), (2), (3)).toDF("a").createOrReplaceTempView("t1")
+      // Seq((1), (2), (3)).toDF("c1").createOrReplaceTempView("t2")
+      // Seq((3), (9)).toDF("col1").createOrReplaceTempView("t3")
       Seq((1), (2), (3)).toDF("a").persist.createOrReplaceTempView("t1")
       Seq((1), (2), (3)).toDF("c1").persist.createOrReplaceTempView("t2")
       Seq((3), (9)).toDF("col1").persist.createOrReplaceTempView("t3")
@@ -2730,11 +2733,10 @@ class SubquerySuite extends QueryTest
       val execution = sqlContext.sessionState.executePlan(sqlContext.sql(query).logicalPlan)
       val executedPlan = execution.executedPlan
       val schema = executedPlan.schema
-      SQLExecution.withNewExecutionId(execution, Some("cli")) {
-        val result = executedPlan.executeCollectPublic().map(_.toSeq).toSeq
-        print(s"Result is $result\n")
-        print(s"Schema is ${schema}\n")
-      }
+      val result = executedPlan.executeCollectPublic()
+      assert(result.size == 3)
+      assert(result(0).size == 1)
+      assert(schema.size == 1)
     }
   }
 
