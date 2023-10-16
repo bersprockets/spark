@@ -2712,18 +2712,24 @@ class SubquerySuite extends QueryTest
     }
   }
 
-  test("schema_oddity_1") {
+  def makeTemp(testFun: => Any): Unit = {
     withTempView("t1", "t2", "t3") {
-      // Seq((1), (2), (3)).toDF("a").createOrReplaceTempView("t1")
+      // Seq((1), (2), (3), (7)).toDF("a").createOrReplaceTempView("t1")
       // Seq((1), (2), (3)).toDF("c1").createOrReplaceTempView("t2")
       // Seq((3), (9)).toDF("col1").createOrReplaceTempView("t3")
-      Seq((1), (2), (3)).toDF("a").persist.createOrReplaceTempView("t1")
+      Seq((1), (2), (3), (7)).toDF("a").persist.createOrReplaceTempView("t1")
       Seq((1), (2), (3)).toDF("c1").persist.createOrReplaceTempView("t2")
       Seq((3), (9)).toDF("col1").persist.createOrReplaceTempView("t3")
+      testFun
+    }
+  }
+
+  test("schema_oddity_1") {
+    makeTemp {
       val query =
         """
           |SELECT *
-          |from t1
+          |FROM t1
           |WHERE EXISTS (
           |  SELECT c1
           |  FROM t2
@@ -2736,13 +2742,7 @@ class SubquerySuite extends QueryTest
   }
 
   test("schema_oddity_2") {
-    withTempView("t1", "t2", "t3") {
-      // Seq((1), (2), (3)).toDF("a").createOrReplaceTempView("t1")
-      // Seq((1), (2), (3)).toDF("c1").createOrReplaceTempView("t2")
-      // Seq((3), (9)).toDF("col1").createOrReplaceTempView("t3")
-      Seq((1), (2), (3)).toDF("a").persist.createOrReplaceTempView("t1")
-      Seq((1), (2), (3)).toDF("c1").persist.createOrReplaceTempView("t2")
-      Seq((3), (9)).toDF("col1").persist.createOrReplaceTempView("t3")
+    makeTemp {
       val query =
         """
           |SELECT (
@@ -2756,10 +2756,83 @@ class SubquerySuite extends QueryTest
           |  )
           |  LIMIT 1
           |)
-          |FROM range(1);
-          |""".stripMargin
+          |FROM range(1)""".stripMargin
       val df = sql(query)
       checkAnswer(df, Row(1))
+    }
+  }
+
+  test("schema_oddity_3") {
+    makeTemp {
+      val query =
+        """
+          |SELECT *
+          |FROM t1
+          |WHERE a IN (
+          |  SELECT c1
+          |  FROM t2
+          |  where a IN (SELECT col1 FROM t3)
+          |)""".stripMargin
+      val df = sql(query)
+      checkAnswer(df, Row(3))
+    }
+  }
+
+  test("schema_oddity_4") {
+    makeTemp {
+      val query =
+        """
+          |SELECT *
+          |FROM t1
+          |WHERE NOT EXISTS (
+          |  SELECT c1
+          |  FROM t2
+          |  WHERE a = c1
+          |  OR a IN (SELECT col1 FROM t3)
+          |)""".stripMargin
+      val df = sql(query)
+      checkAnswer(df, Row(7))
+    }
+  }
+
+  test("schema_oddity_5") {
+    makeTemp {
+      val query =
+      """
+        |SELECT (
+        |  SELECT *
+        |  FROM t1
+        |  WHERE a IN (
+        |    SELECT c1
+        |    FROM t2
+        |    WHERE a IN (SELECT col1 FROM t3)
+        |  )
+        |  LIMIT 1
+        |)
+        |FROM range(1)""".stripMargin
+      val df = sql(query)
+      checkAnswer(df, Row(3))
+    }
+  }
+
+  test("schema_oddity_6") {
+    makeTemp {
+      val query =
+      """
+        |SELECT (
+        |  SELECT *
+        |  FROM t1
+        |  WHERE NOT EXISTS (
+        |    SELECT c1
+        |    FROM t2
+        |    WHERE a = c1
+        |    OR a IN (SELECT col1 FROM t3)
+        |  )
+        |  LIMIT 1
+        |)
+        |FROM range(1)""".stripMargin
+      val df = sql(query)
+      checkAnswer(df, Row(7))
     }
   }
 }
