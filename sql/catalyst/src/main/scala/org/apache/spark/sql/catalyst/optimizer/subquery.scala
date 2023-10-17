@@ -131,19 +131,22 @@ object RewritePredicateSubquery extends Rule[LogicalPlan] with PredicateHelper {
       withSubquery.foldLeft(newFilter) {
         case (p, Exists(sub, _, _, conditions, subHint)) =>
           val (joinCond, outerPlan) = rewriteExistentialExpr(conditions, p)
-          fixJoin(buildJoin(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, sub, joinCond),
-            LeftSemi, joinCond, subHint))
+          val join = buildJoin(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, sub, joinCond),
+            LeftSemi, joinCond, subHint)
+          Project(p.output, join)
         case (p, Not(Exists(sub, _, _, conditions, subHint))) =>
           val (joinCond, outerPlan) = rewriteExistentialExpr(conditions, p)
-          fixJoin(buildJoin(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, sub, joinCond),
-            LeftAnti, joinCond, subHint))
+          val join = buildJoin(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, sub, joinCond),
+            LeftAnti, joinCond, subHint)
+          Project(p.output, join)
         case (p, InSubquery(values, ListQuery(sub, _, _, _, conditions, subHint))) =>
           // Deduplicate conflicting attributes if any.
           val newSub = dedupSubqueryOnSelfJoin(p, sub, Some(values))
           val inConditions = values.zip(newSub.output).map(EqualTo.tupled)
           val (joinCond, outerPlan) = rewriteExistentialExpr(inConditions ++ conditions, p)
-          fixJoin(Join(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, newSub, joinCond),
-            LeftSemi, joinCond, JoinHint(None, subHint)))
+          val join = Join(outerPlan, rewriteDomainJoinsIfPresent(outerPlan, newSub, joinCond),
+            LeftSemi, joinCond, JoinHint(None, subHint))
+          Project(p.output, join)
         case (p, Not(InSubquery(values, ListQuery(sub, _, _, _, conditions, subHint)))) =>
           // This is a NULL-aware (left) anti join (NAAJ) e.g. col NOT IN expr
           // Construct the condition. A NULL in one of the conditions is regarded as a positive
@@ -185,22 +188,6 @@ object RewritePredicateSubquery extends Rule[LogicalPlan] with PredicateHelper {
         // The newExpr can not be None
         newExpr.get
       }).withNewChildren(Seq(newChild))
-  }
-
-  def fixJoin(join: Join): LogicalPlan = {
-    val ignoreAttributes = join.flatMap {
-      case j: Join if j.joinType.isInstanceOf[ExistenceJoin] =>
-        Seq(j.joinType.asInstanceOf[ExistenceJoin].exists)
-      case _ => Seq.empty[Attribute]
-    }
-    val newOutput = join.outputSet -- ignoreAttributes
-    if (newOutput.size < join.outputSet.size) {
-      print(s"Adding project with newOutput ${newOutput.toSeq}\n")
-      Project(newOutput.toSeq, join)
-    } else {
-      print(s"Leaving join as-is\n")
-      join
-    }
   }
 
   /**
