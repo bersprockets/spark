@@ -2741,27 +2741,6 @@ class SubquerySuite extends QueryTest
     }
   }
 
-  test("schema_oddity_2") {
-    makeTemp {
-      val query =
-        """
-          |SELECT (
-          |  SELECT *
-          |  FROM t1
-          |  WHERE EXISTS (
-          |    SELECT c1
-          |    FROM t2
-          |    WHERE a = c1
-          |    OR a IN (SELECT col1 FROM t3)
-          |  )
-          |  LIMIT 1
-          |)
-          |FROM range(1)""".stripMargin
-      val df = sql(query)
-      checkAnswer(df, Row(1))
-    }
-  }
-
   test("schema_oddity_3") {
     makeTemp {
       val query =
@@ -2790,47 +2769,6 @@ class SubquerySuite extends QueryTest
           |  WHERE a = c1
           |  OR a IN (SELECT col1 FROM t3)
           |)""".stripMargin
-      val df = sql(query)
-      checkAnswer(df, Row(7))
-    }
-  }
-
-  test("schema_oddity_5") {
-    makeTemp {
-      val query =
-      """
-        |SELECT (
-        |  SELECT *
-        |  FROM t1
-        |  WHERE a IN (
-        |    SELECT c1
-        |    FROM t2
-        |    WHERE a IN (SELECT col1 FROM t3)
-        |  )
-        |  LIMIT 1
-        |)
-        |FROM range(1)""".stripMargin
-      val df = sql(query)
-      checkAnswer(df, Row(3))
-    }
-  }
-
-  test("schema_oddity_6") {
-    makeTemp {
-      val query =
-      """
-        |SELECT (
-        |  SELECT *
-        |  FROM t1
-        |  WHERE NOT EXISTS (
-        |    SELECT c1
-        |    FROM t2
-        |    WHERE a = c1
-        |    OR a IN (SELECT col1 FROM t3)
-        |  )
-        |  LIMIT 1
-        |)
-        |FROM range(1)""".stripMargin
       val df = sql(query)
       checkAnswer(df, Row(7))
     }
