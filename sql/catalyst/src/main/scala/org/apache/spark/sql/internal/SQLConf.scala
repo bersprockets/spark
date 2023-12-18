@@ -2032,7 +2032,7 @@ object SQLConf {
       " method.")
     .version("2.0.0")
     .booleanConf
-    .createWithDefault(true)
+    .createWithDefault(false)
 
   val WHOLESTAGE_CODEGEN_USE_ID_IN_CLASS_NAME =
     buildConf("spark.sql.codegen.useIdInClassName")
@@ -2061,7 +2061,7 @@ object SQLConf {
       "end users.")
     .version("2.4.0")
     .enumConf(CodegenObjectFactoryMode)
-    .createWithDefault(CodegenObjectFactoryMode.FALLBACK)
+    .createWithDefault(CodegenObjectFactoryMode.NO_CODEGEN)
 
   val CODEGEN_FALLBACK = buildConf("spark.sql.codegen.fallback")
     .internal()
