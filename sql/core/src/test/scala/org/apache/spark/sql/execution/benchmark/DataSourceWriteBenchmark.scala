@@ -75,7 +75,32 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
     val limit = numRows / structWidth
     val selectExprCore = (1 to structWidth).map(i => s"'f$i', id").mkString(", ")
     val selectExpr = s"named_struct($selectExprCore) as c1"
-    benchmark.addCase(s"Output Struct column $structWidth fields") { _ =>
+    benchmark.addCase(s"Output Struct Column $structWidth Fields") { _ =>
+      spark.sql(s"INSERT OVERWRITE TABLE $table SELECT $selectExpr " +
+        s"FROM $tempTable limit $limit")
+    }
+  }
+
+  def writeNestedStruct(
+    table: String,
+    format: String,
+    benchmark: Benchmark,
+    elementCount: Int,
+    structWidth: Int): Unit = {
+    if (format == "CSV") {
+      return
+    }
+    val structDefinition = s"struct<${(1 to structWidth).map(i => s"f$i long").mkString(", ")}>"
+    val arrayDefinition = s"array<$structDefinition>"
+    spark.sql(s"CREATE TABLE $table(c1 $arrayDefinition) USING $format")
+    val limit = numRows / (structWidth * elementCount)
+    val structs = (1 to elementCount).map { _ =>
+      val fields = (1 to structWidth).map(i => s"'f$i', id").mkString(", ")
+      s"named_struct($fields)"
+    }.mkString(", ")
+    val selectExpr = s"array($structs) as c1"
+    benchmark.addCase(s"Output Nested Struct Column $elementCount Elements, " +
+      s"$structWidth Fields") { _ =>
       spark.sql(s"INSERT OVERWRITE TABLE $table SELECT $selectExpr " +
         s"FROM $tempTable limit $limit")
     }
@@ -90,10 +115,14 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
     val tableStructNarrow = "tableStructNarrow"
     val tableStructMedium = "tableStructMedium"
     val tableStructWide = "tableStructWide"
+    val tableNestedStructMedium = "tableNestedStructMedium"
+    val tableNestedStructWide1 = "tableNestedStructWide1"
+    val tableNestedStructWide2 = "tableNestedStructWide2"
     withTempTable(tempTable) {
       spark.range(numRows).createOrReplaceTempView(tempTable)
       withTable(tableInt, tableDouble, tableIntString, tablePartition, tableBucket,
-          tableStructNarrow, tableStructMedium, tableStructWide) {
+          tableStructNarrow, tableStructMedium, tableStructWide,
+        tableNestedStructMedium, tableNestedStructWide1, tableNestedStructWide2) {
         val writerName = extraInfo match {
           case Some(extra) => s"$format($extra)"
           case _ => format
@@ -108,6 +137,9 @@ trait DataSourceWriteBenchmark extends SqlBasedBenchmark {
         writeStruct(tableStructNarrow, format, benchmark, 10)
         writeStruct(tableStructMedium, format, benchmark, 100)
         writeStruct(tableStructWide, format, benchmark, 600)
+        writeNestedStruct(tableNestedStructMedium, format, benchmark, 10, 10)
+        writeNestedStruct(tableNestedStructWide1, format, benchmark, 60, 10)
+        writeNestedStruct(tableNestedStructWide2, format, benchmark, 10, 60)
         benchmark.run()
       }
     }
