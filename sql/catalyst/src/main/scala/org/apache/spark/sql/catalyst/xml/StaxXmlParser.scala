@@ -374,7 +374,7 @@ class StaxXmlParser(
                   case dt: DataType =>
                     convertField(parser, dt)
                 }
-                row(index) = values :+ newValue
+                row(index) = values += newValue
 
               case dt: DataType =>
                 row(index) = convertField(parser, dt, attributes)
