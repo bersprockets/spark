@@ -18,6 +18,7 @@
 package org.apache.spark.sql
 
 import org.apache.spark.annotation.Stable
+import org.apache.spark.util.Utils
 
 /**
  * A container for a [[Dataset]], used for implicit conversions in Scala.
@@ -35,11 +36,31 @@ case class DatasetHolder[T] private[sql](private val ds: Dataset[T]) {
 
   // This is declared with parentheses to prevent the Scala compiler from treating
   // `rdd.toDS("1")` as invoking this toDS and then apply on the returned Dataset.
-  def toDS(): Dataset[T] = ds
+  def toDS(): Dataset[T] = {
+    if (Utils.isTesting) {
+      ds.persist()
+    } else {
+      ds
+    }
+  }
 
   // This is declared with parentheses to prevent the Scala compiler from treating
   // `rdd.toDF("1")` as invoking this toDF and then apply on the returned DataFrame.
-  def toDF(): DataFrame = ds.toDF()
+  def toDF(): DataFrame = {
+    val df = ds.toDF()
+    if (Utils.isTesting) {
+      df.persist()
+    } else {
+      df
+    }
+  }
 
-  def toDF(colNames: String*): DataFrame = ds.toDF(colNames : _*)
+  def toDF(colNames: String*): DataFrame = {
+    val df = ds.toDF(colNames : _*)
+    if (Utils.isTesting) {
+      df.persist()
+    } else {
+      df
+    }
+  }
 }

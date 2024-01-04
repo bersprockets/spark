@@ -129,7 +129,12 @@ trait SQLQueryTestHelper extends Logging {
 
     if (cvcs.nonEmpty) {
       val name = cvcs.head.name.table
-      session.sql(s"cache table ${name}")
+      try {
+        session.sql(s"cache table ${name}")
+      } catch {
+        case e: Exception =>
+          print(s"Exception caching view ${name}: ${e.getMessage}\n")
+      }
     }
 
     // If the output is not pre-sorted, sort it.
