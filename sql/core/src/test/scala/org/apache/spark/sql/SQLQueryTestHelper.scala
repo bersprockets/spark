@@ -33,7 +33,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.util.fileToString
 import org.apache.spark.sql.execution.HiveResult.hiveResultString
 import org.apache.spark.sql.execution.SQLExecution
-import org.apache.spark.sql.execution.command.{DescribeColumnCommand, DescribeCommandBase}
+import org.apache.spark.sql.execution.command.{CreateViewCommand, DescribeColumnCommand, DescribeCommandBase}
 import org.apache.spark.sql.types.{DateType, StructType, TimestampType}
 import org.apache.spark.util.ArrayImplicits.SparkArrayOps
 
@@ -127,6 +127,20 @@ trait SQLQueryTestHelper extends Logging {
     // Get answer, but also get rid of the #1234 expression ids that show up in explain plans
     val answer = SQLExecution.withNewExecutionId(df.queryExecution, Some(sql)) {
       hiveResultString(df.queryExecution.executedPlan).map(replaceNotIncludedMsg)
+    }
+
+    val cvcs = df.queryExecution.analyzed.collect {
+      case c: CreateViewCommand => c
+    }
+
+    if (cvcs.nonEmpty) {
+      val name = cvcs.head.name.table
+      try {
+        session.sql(s"cache table ${name}")
+      } catch {
+        case e: Exception =>
+          print(s"Exception caching view ${name}: ${e.getMessage}\n")
+      }
     }
 
     // If the output is not pre-sorted, sort it.
