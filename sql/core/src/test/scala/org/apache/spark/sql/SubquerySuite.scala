@@ -19,6 +19,7 @@ package org.apache.spark.sql
 
 import scala.collection.mutable.ArrayBuffer
 
+import org.apache.spark.sql.catalyst.ExtendedAnalysisException
 import org.apache.spark.sql.catalyst.expressions.SubqueryExpression
 import org.apache.spark.sql.catalyst.plans.{LeftAnti, LeftSemi}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, Join, LogicalPlan, Project, Sort, Union}
@@ -2792,6 +2793,26 @@ class SubquerySuite extends QueryTest
           |)""".stripMargin
       val df3 = sql(query3)
       checkAnswer(df3, Row(7))
+    }
+  }
+
+  test("typecoercion_issue") {
+    withTempView("t1", "t2") {
+      sql("create or replace temp view t1(a) as values (make_interval(12))")
+      sql("create or replace temp view t2(b) as values (make_interval(13))")
+
+      checkError(
+        exception = intercept[ExtendedAnalysisException] {
+          sql("select a in (select b from t2) from t1").collect()
+        },
+        errorClass = "DATATYPE_MISMATCH.INVALID_ORDERING_TYPE",
+        parameters = Map("functionName" -> "`insubquery`", "dataType" -> "\"INTERVAL\"",
+          "sqlExpr" -> "\"(a IN (listquery()))\""),
+        context = ExpectedContext(
+          fragment = "in (select b from t2)",
+          start = 9,
+          stop = 29)
+      )
     }
   }
 }

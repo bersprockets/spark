@@ -384,8 +384,11 @@ abstract class TypeCoercionBase {
             case (e, dt) if e.dataType != dt => Cast(e, dt)
             case (e, _) => e
           }
-
-          InSubquery(newLhs, l.withNewPlan(Project(castedRhs, l.plan)))
+          if (lhs == newLhs && rhs == castedRhs) {
+            i
+          } else {
+            InSubquery(newLhs, l.withNewPlan(Project(castedRhs, l.plan)))
+          }
         } else {
           i
         }
