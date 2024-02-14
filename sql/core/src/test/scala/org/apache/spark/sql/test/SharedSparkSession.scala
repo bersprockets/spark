@@ -76,9 +76,9 @@ trait SharedSparkSessionBase
       // ConstantPropagation etc.
       .set(SQLConf.OPTIMIZER_EXCLUDED_RULES.key, ConvertToLocalRelation.ruleName)
       .set(SQLConf.AUTO_BROADCASTJOIN_THRESHOLD.key, "-1")
+      .set(SQLConf.ADAPTIVE_AUTO_BROADCASTJOIN_THRESHOLD.key, "-1")
       // .set("spark.memory.offHeap.enabled", "true")
       // .set("spark.memory.offHeap.size", "20480k")
-      .set("spark.sql.adaptive.enabled", "false")
       // .set("spark.sql.codegen.wholeStage", "false")
     conf.set(
       StaticSQLConf.WAREHOUSE_PATH,
