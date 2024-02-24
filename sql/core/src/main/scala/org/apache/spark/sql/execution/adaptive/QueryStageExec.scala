@@ -292,6 +292,10 @@ case class TableCacheQueryStageExec(
     }
   }
 
+  override def doCanonicalize(): SparkPlan = {
+    TableCacheQueryStageExec(0, plan.canonicalized)
+  }
+
   override protected def doMaterialize(): Future[Any] = future
 
   override def getRuntimeStatistics: Statistics = inMemoryTableScan.relation.computeStats()
