@@ -2861,6 +2861,18 @@ class AdaptiveQueryExecSuite
     val unionDF = aggDf1.union(aggDf2)
     checkAnswer(unionDF.select("id").distinct(), Seq(Row(null)))
   }
+
+  test("TableCacheQueryStageExec instances of same plan are semantically equivalent") {
+    val cached = Seq((1), (2)).toDF("c").cache()
+    val df = cached.join(cached, Seq("c")).join(cached, Seq("c"))
+    df.collect()
+    assert(collect(df.queryExecution.executedPlan) {
+      case c: TableCacheQueryStageExec => c
+    }.size == 2)
+    assert(collect(df.queryExecution.executedPlan) {
+      case c: ReusedExchangeExec => c
+    }.size == 1)
+  }
 }
 
 /**
