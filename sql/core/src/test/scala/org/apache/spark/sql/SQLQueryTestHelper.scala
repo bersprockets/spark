@@ -33,6 +33,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.util.fileToString
 import org.apache.spark.sql.execution.HiveResult.hiveResultString
 import org.apache.spark.sql.execution.SQLExecution
+import org.apache.spark.sql.execution.columnar.InMemoryTableScanExec
 import org.apache.spark.sql.execution.command.{DescribeColumnCommand, DescribeCommandBase}
 import org.apache.spark.sql.types.{DateType, StructType, TimestampType}
 import org.apache.spark.util.ArrayImplicits.SparkArrayOps
@@ -122,19 +123,45 @@ trait SQLQueryTestHelper extends Logging {
   protected def getNormalizedQueryExecutionResult(
       session: SparkSession, sql: String): (String, Seq[String]) = {
     // Returns true if the plan is supposed to be sorted.
+    val (persistedDfOpt) = if ((sql.toLowerCase().startsWith("select") ||
+        sql.toLowerCase().startsWith("with")) &&
+        !sql.toLowerCase().contains("insert")) {
+      val persistedDf = session.sql(sql)
+      print(s"caching '${sql}'\n")
+      persistedDf.persist()
+      // materialize the query
+      persistedDf.count()
+      Some(persistedDf)
+    } else {
+      None
+    }
     val df = session.sql(sql)
+    // val df = session.sql(sql)
+    if (persistedDfOpt.isDefined) {
+      val inMemoryCount = df.queryExecution.sparkPlan.collect {
+        case i: InMemoryTableScanExec => i
+      }.size
+      print(s"Number of InMemoryTableScanExec instances is ${inMemoryCount}\n")
+      if (inMemoryCount > 0 && sql.toLowerCase().startsWith("with")) {
+        print(s"${df.queryExecution.sparkPlan}\n")
+      }
+    }
     val schema = df.schema.catalogString
     // Get answer, but also get rid of the #1234 expression ids that show up in explain plans
     val answer = SQLExecution.withNewExecutionId(df.queryExecution, Some(sql)) {
       hiveResultString(df.queryExecution.executedPlan).map(replaceNotIncludedMsg)
-    }
+    }.toIndexedSeq
 
     // If the output is not pre-sorted, sort it.
-    if (isSemanticallySorted(df.queryExecution.analyzed)) {
+    val res = if (isSemanticallySorted(df.queryExecution.analyzed)) {
       (schema, answer)
     } else {
       (schema, answer.sorted)
     }
+    if (persistedDfOpt.isDefined) {
+      persistedDfOpt.get.unpersist()
+    }
+    res
   }
 
   /**
