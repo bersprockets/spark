@@ -127,7 +127,7 @@ trait SQLQueryTestHelper extends Logging {
         sql.toLowerCase().startsWith("with")) &&
         !sql.toLowerCase().contains("insert")) {
       val persistedDf = session.sql(sql)
-      print(s"caching '${sql}'\n")
+      // print(s"caching '${sql}'\n")
       persistedDf.persist()
       // materialize the query
       persistedDf.count()
@@ -141,9 +141,8 @@ trait SQLQueryTestHelper extends Logging {
       val inMemoryCount = df.queryExecution.sparkPlan.collect {
         case i: InMemoryTableScanExec => i
       }.size
-      print(s"Number of InMemoryTableScanExec instances is ${inMemoryCount}\n")
-      if (inMemoryCount > 0 && sql.toLowerCase().startsWith("with")) {
-        print(s"${df.queryExecution.sparkPlan}\n")
+      if (inMemoryCount == 0) {
+        print(s"Oops: '${sql}'\n")
       }
     }
     val schema = df.schema.catalogString
