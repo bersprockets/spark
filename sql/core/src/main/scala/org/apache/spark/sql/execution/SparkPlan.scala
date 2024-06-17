@@ -467,6 +467,20 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     getByteArrayRdd().map(_._2).toLocalIterator.flatMap(decodeUnsafeRows)
   }
 
+  def executeToIterator2(): Iterator[InternalRow] = {
+    val rdd = getByteArrayRdd().map(_._2)
+
+    def collectPartition(p: Int): Array[ChunkedByteBuffer] = {
+      // before running the job, we need to set spark context properties
+      // so that user-set SQL Conf will exist on the executors
+      SQLExecution.withSQLConfPropagated(session) {
+        sparkContext.runJob(rdd, (iter: Iterator[ChunkedByteBuffer]) => iter.toArray, Seq(p)).head
+      }
+    }
+    val it = rdd.partitions.indices.iterator.flatMap(i => collectPartition(i))
+    it.flatMap(decodeUnsafeRows)
+  }
+
   /**
    * Runs this query returning the result as an array, using external Row format.
    */

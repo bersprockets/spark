@@ -92,18 +92,23 @@ class UnivocityParser(
   // We preallocate it avoid unnecessary allocations.
   private val noRows = None
 
+  print("Bloopies: UnivocityParser created\n")
+
   private lazy val timestampFormatter = TimestampFormatter(
     options.timestampFormatInRead,
     options.zoneId,
     options.locale,
     legacyFormat = FAST_DATE_FORMAT,
     isParsing = true)
-  private lazy val timestampNTZFormatter = TimestampFormatter(
-    options.timestampNTZFormatInRead,
-    options.zoneId,
-    legacyFormat = FAST_DATE_FORMAT,
-    isParsing = true,
-    forTimestampNTZ = true)
+  private lazy val timestampNTZFormatter = {
+    print("Bloopies: Getting TimestampFormatter\n")
+    TimestampFormatter(
+      options.timestampNTZFormatInRead,
+      options.zoneId,
+      legacyFormat = FAST_DATE_FORMAT,
+      isParsing = true,
+      forTimestampNTZ = true)
+  }
   private lazy val dateFormatter = DateFormatter(
     options.dateFormatInRead,
     options.locale,

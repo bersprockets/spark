@@ -210,7 +210,7 @@ class QueryExecution(
    * use `Dataset.rdd` instead where conversion will be applied.
    */
   lazy val toRdd: RDD[InternalRow] = new SQLExecutionRDD(
-    executedPlan.execute(), sparkSession.sessionState.conf)
+    executedPlan.execute(), sparkSession)
 
   /** Get the metrics observed during the execution of the query plan. */
   def observedMetrics: Map[String, Row] = CollectMetricsExec.collect(executedPlan)
