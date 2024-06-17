@@ -24,7 +24,7 @@ import org.apache.spark.rdd.{MapPartitionsRDD, RDD}
 import org.apache.spark.sql.SparkSession
 
 class SQLExecutionMapPartitionsRDD[U: ClassTag, T: ClassTag](
-    session: SparkSession,
+    @transient session: SparkSession,
     prev: RDD[T],
     f: (TaskContext, Int, Iterator[T]) => Iterator[U],  // (TaskContext, partition index, iterator)
     preservesPartitioning: Boolean = false,

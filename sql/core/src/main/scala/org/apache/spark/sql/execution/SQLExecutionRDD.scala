@@ -65,16 +65,10 @@ class SQLExecutionRDD[T: ClassTag](
     // this RDD.
     if (context.getLocalProperty(SQLExecution.EXECUTION_ID_KEY) == null) {
       SQLConf.withExistingConf(sqlConfExecutorSide) {
-        print("Bloopies: About to get iterator #1\n")
-        val ret = firstParent[T].iterator(split, context)
-        print("Bloopies: Got iterator #1\n")
-        ret
+        firstParent[T].iterator(split, context)
       }
     } else {
-      print("Bloopies: About to get iterator #2\n")
-      val ret = firstParent[T].iterator(split, context)
-      print("Bloopies: Got iterator #2\n")
-      ret
+      firstParent[T].iterator(split, context)
     }
   }
 }

@@ -40,8 +40,6 @@ class CSVOptions(
 
   import CSVOptions._
 
-  print("Bloopies: CSV options created\n")
-
   def this(
     parameters: Map[String, String],
     columnPruning: Boolean,
