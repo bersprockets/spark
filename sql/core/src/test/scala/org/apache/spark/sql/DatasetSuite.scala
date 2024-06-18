@@ -2773,6 +2773,7 @@ class DatasetSuite extends QueryTest
       }
       assert(test.collect()(0).toString == "false")
       assert(test.rdd.collect()(0).toString == "false")
+      assert(test.rdd.map(identity).collect()(0).toString == "false")
     }
   }
 }

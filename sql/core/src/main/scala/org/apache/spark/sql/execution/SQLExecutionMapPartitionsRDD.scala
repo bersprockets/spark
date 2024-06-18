@@ -32,6 +32,22 @@ class SQLExecutionMapPartitionsRDD[U: ClassTag, T: ClassTag](
     isOrderSensitive: Boolean = false)
   extends MapPartitionsRDD[U, T](prev, f, preservesPartitioning, isFromBarrier, isOrderSensitive) {
 
+  override def map[V: ClassTag](f: U => V): RDD[V] = withScope {
+    val cleanedF = session.sparkContext.clean(f)
+    new SQLExecutionMapPartitionsRDD[V, U](session, this, (_, _, iter) => iter.map(cleanedF))
+  }
+
+  override def mapPartitions[V: ClassTag](
+      f: Iterator[U] => Iterator[V],
+      preservesPartitioning: Boolean = false): RDD[V] = {
+    val cleanedF = session.sparkContext.clean(f)
+    new SQLExecutionMapPartitionsRDD(
+      session,
+      this,
+      (_: TaskContext, _: Int, iter: Iterator[U]) => cleanedF(iter),
+      preservesPartitioning).asInstanceOf[RDD[V]]
+  }
+
   override def collect(): Array[U] = {
     SQLExecution.withSQLConfPropagated(session) {
       super.collect()
