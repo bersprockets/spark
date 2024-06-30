@@ -30,7 +30,7 @@ import org.scalatest.Assertions._
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import org.apache.spark.{SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
+import org.apache.spark.{HashPartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
 import org.apache.spark.TestUtils.withListener
 import org.apache.spark.internal.config.MAX_RESULT_SIZE
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
@@ -2800,6 +2800,27 @@ class DatasetSuite extends QueryTest
         }
         assert(jobCounter === 0)
       }
+    }
+  }
+
+  test("stuffing") {
+    withSQLConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS.key -> "false") {
+      val df = Seq("test").toDF("a")
+      val test = df.map { r =>
+        print(s"${Thread.currentThread().getName} on this thread\n")
+        SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
+      }
+      assert(test.collect()(0).toString == "false")
+      assert(test.rdd.collect()(0).toString == "false")
+      assert(test.rdd.map(identity).collect()(0).toString == "false")
+      assert(test.rdd.mapPartitions(identity).collect()(0).toString == "false")
+      assert(test.rdd.repartition(1).collect()(0).toString == "false")
+      assert(test.rdd.union(test.rdd).collect()(0).toString == "false")
+      print("Got here OK!\n")
+      val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
+      val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
+      val unionRdd = rdd1.union(rdd2)
+      assert(unionRdd.map(x => x._1).collect()(0).toString == "false")
     }
   }
 }

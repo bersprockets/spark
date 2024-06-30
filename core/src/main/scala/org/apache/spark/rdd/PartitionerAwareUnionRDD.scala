@@ -74,6 +74,11 @@ class PartitionerAwareUnionRDD[T: ClassTag](
     }.toArray
   }
 
+  override def getActionWrapper: (() => Any) => Any = {
+    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
+    rdds.head.getActionWrapper
+  }
+
   // Get the location where most of the partitions of parent RDDs are located
   override def getPreferredLocations(s: Partition): Seq[String] = {
     logDebug("Finding preferred location for " + this + ", partition " + s.index)

@@ -227,7 +227,7 @@ class QueryExecution(
   def assertExecutedPlanPrepared(): Unit = executedPlan
 
   val lazyToRdd = LazyTry {
-    new SQLExecutionRDD(executedPlan.execute(), sparkSession.sessionState.conf)
+    new SQLExecutionRDD(executedPlan.execute(), sparkSession)
   }
 
   /**
