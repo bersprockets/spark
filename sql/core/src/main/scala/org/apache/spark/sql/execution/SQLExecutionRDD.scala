@@ -18,7 +18,9 @@ package org.apache.spark.sql.execution
 
 import org.apache.spark.{Partition, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.execution.SQLExecution.withSQLConfPropagated
 import org.apache.spark.sql.internal.SQLConf
 
 /**
@@ -31,8 +33,9 @@ import org.apache.spark.sql.internal.SQLConf
  * @param conf the `SQLConf` to apply to the execution of the SQL plan
  */
 class SQLExecutionRDD(
-    var sqlRDD: RDD[InternalRow], @transient conf: SQLConf) extends RDD[InternalRow](sqlRDD) {
-  private val sqlConfigs = conf.getAllConfs
+    var sqlRDD: RDD[InternalRow], @transient session: SparkSession)
+  extends RDD[InternalRow](sqlRDD, SQLExecutionRDD.getActionWrapper(session)) {
+  private val sqlConfigs = session.sessionState.conf.getAllConfs
   private lazy val sqlConfExecutorSide = {
     val newConf = new SQLConf()
     sqlConfigs.foreach { case (k, v) => newConf.setConfString(k, v) }
@@ -54,5 +57,14 @@ class SQLExecutionRDD(
     } else {
       firstParent[InternalRow].iterator(split, context)
     }
+  }
+}
+
+object SQLExecutionRDD {
+  def getActionWrapper(session: SparkSession): (() => Any) => Any = {
+    (f) =>
+      withSQLConfPropagated(session) {
+        f()
+      }
   }
 }

@@ -51,6 +51,11 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
 
   private var mapSideCombine: Boolean = false
 
+  override def getActionWrapper: (() => Any) => Any = {
+    // print(s"ShuffledRDD: getActionWrapper called; prev is ${prev}\n")
+    if (prev != null) prev.getActionWrapper else super.getActionWrapper
+  }
+
   /** Set a serializer for this RDD's shuffle, or null to use the default (spark.serializer) */
   def setSerializer(serializer: Serializer): ShuffledRDD[K, V, C] = {
     this.userSpecifiedSerializer = Option(serializer)
