@@ -76,7 +76,11 @@ class PartitionerAwareUnionRDD[T: ClassTag](
 
   override def getActionWrapper: (() => Any) => Any = {
     // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
-    rdds.head.getActionWrapper
+    if (rdds == null || rdds.isEmpty) {
+      super.getActionWrapper
+    } else {
+      rdds.head.getActionWrapper
+    }
   }
 
   // Get the location where most of the partitions of parent RDDs are located

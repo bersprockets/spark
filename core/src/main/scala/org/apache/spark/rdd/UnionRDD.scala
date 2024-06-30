@@ -76,7 +76,7 @@ class UnionRDD[T: ClassTag](
 
   override def getActionWrapper: (() => Any) => Any = {
     // print(s"UnionRDD: getActionWrapper called; rdds is ${rdds.headOption}\n")
-    if (rdds.isEmpty) {
+    if (rdds == null || rdds.isEmpty) {
       super.getActionWrapper
     } else {
       rdds.head.getActionWrapper
