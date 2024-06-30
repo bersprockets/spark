@@ -93,7 +93,7 @@ abstract class RDD[T: ClassTag](
     logWarning("Spark does not support nested RDDs (see SPARK-5063)")
   }
 
-  def getActionWrapper: (() => Any) => Any = actionWrapper
+  protected[spark] def getActionWrapper: (() => Any) => Any = actionWrapper
 
   private def sc: SparkContext = {
     if (_sc == null) {
