@@ -83,7 +83,8 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  */
 abstract class RDD[T: ClassTag](
     @transient private var _sc: SparkContext,
-    @transient private var deps: Seq[Dependency[_]]
+    @transient private var deps: Seq[Dependency[_]],
+    @transient private val actionWrapper: (() => Any) => Any = x => x()
   ) extends Serializable with Logging {
 
   if (classOf[RDD[_]].isAssignableFrom(elementClassTag.runtimeClass)) {
@@ -91,6 +92,8 @@ abstract class RDD[T: ClassTag](
     // might have defined nested RDDs without running jobs with them.
     logWarning("Spark does not support nested RDDs (see SPARK-5063)")
   }
+
+  def getActionWrapper: (() => Any) => Any = actionWrapper
 
   private def sc: SparkContext = {
     if (_sc == null) {
@@ -102,6 +105,10 @@ abstract class RDD[T: ClassTag](
   /** Construct an RDD with just a one-to-one dependency on one parent */
   def this(@transient oneParent: RDD[_]) =
     this(oneParent.context, List(new OneToOneDependency(oneParent)))
+
+  def this(@transient oneParent: RDD[_], @transient actionWrapper: (() => Any) => Any) = {
+    this(oneParent.context, List(new OneToOneDependency(oneParent)), actionWrapper)
+  }
 
   private[spark] def conf = sc.conf
   // =======================================================================
@@ -1054,9 +1061,11 @@ abstract class RDD[T: ClassTag](
    * all the data is loaded into the driver's memory.
    */
   def collect(): Array[T] = withScope {
-    val results = sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
+    val results = getActionWrapper({ () =>
+      sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
+    }).asInstanceOf[Array[Array[T]]]
     import org.apache.spark.util.ArrayImplicits._
-    Array.concat(results.toImmutableArraySeq: _*)
+    Array.`concat`(results.toImmutableArraySeq: _*)
   }
 
   /**
