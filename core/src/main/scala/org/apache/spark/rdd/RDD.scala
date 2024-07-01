@@ -83,8 +83,7 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  */
 abstract class RDD[T: ClassTag](
     @transient private var _sc: SparkContext,
-    @transient private var deps: Seq[Dependency[_]],
-    @transient private val actionWrapper: (() => Any) => Any = x => x()
+    @transient private var deps: Seq[Dependency[_]]
   ) extends Serializable with Logging {
 
   if (classOf[RDD[_]].isAssignableFrom(elementClassTag.runtimeClass)) {
@@ -104,8 +103,11 @@ abstract class RDD[T: ClassTag](
   def this(@transient oneParent: RDD[_]) =
     this(oneParent.context, List(new OneToOneDependency(oneParent)))
 
+  private var actionWrapper: (() => Any) => Any = x => x()
+
   def this(@transient oneParent: RDD[_], @transient actionWrapper: (() => Any) => Any) = {
-    this(oneParent.context, List(new OneToOneDependency(oneParent)), actionWrapper)
+    this(oneParent.context, List(new OneToOneDependency(oneParent)))
+    this.actionWrapper = actionWrapper
   }
 
   private[spark] def conf = sc.conf
