@@ -34,7 +34,7 @@ import org.apache.spark.sql.internal.SQLConf
  */
 class SQLExecutionRDD(
     var sqlRDD: RDD[InternalRow], @transient session: SparkSession)
-  extends RDD[InternalRow](sqlRDD, SQLExecutionRDD.getActionWrapper(session)) {
+  extends RDD[InternalRow](sqlRDD) {
   private val sqlConfigs = session.sessionState.conf.getAllConfs
   private lazy val sqlConfExecutorSide = {
     val newConf = new SQLConf()
@@ -45,6 +45,13 @@ class SQLExecutionRDD(
   override val partitioner = firstParent[InternalRow].partitioner
 
   override def getPartitions: Array[Partition] = firstParent[InternalRow].partitions
+
+  override def getActionWrapper: (() => Any) => Any = {
+    (f) =>
+      withSQLConfPropagated(session) {
+        f()
+      }
+  }
 
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     // If we are in the context of a tracked SQL operation, `SQLExecution.EXECUTION_ID_KEY` is set
@@ -57,14 +64,5 @@ class SQLExecutionRDD(
     } else {
       firstParent[InternalRow].iterator(split, context)
     }
-  }
-}
-
-object SQLExecutionRDD {
-  def getActionWrapper(session: SparkSession): (() => Any) => Any = {
-    (f) =>
-      withSQLConfPropagated(session) {
-        f()
-      }
   }
 }
