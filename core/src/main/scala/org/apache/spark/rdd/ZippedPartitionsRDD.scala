@@ -66,6 +66,15 @@ private[spark] abstract class ZippedPartitionsBaseRDD[V: ClassTag](
     }
   }
 
+  override def getActionWrapper: (() => Any) => Any = {
+    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
+    if (rdds == null || rdds.isEmpty) {
+      super.getActionWrapper
+    } else {
+      rdds.head.getActionWrapper
+    }
+  }
+
   override def getPreferredLocations(s: Partition): Seq[String] = {
     s.asInstanceOf[ZippedPartitionsPartition].preferredLocations
   }
