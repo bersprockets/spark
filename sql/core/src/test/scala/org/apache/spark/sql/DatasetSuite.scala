@@ -2816,11 +2816,13 @@ class DatasetSuite extends QueryTest
       assert(test.rdd.mapPartitions(identity).collect()(0).toString == "false")
       assert(test.rdd.repartition(1).collect()(0).toString == "false")
       assert(test.rdd.union(test.rdd).collect()(0).toString == "false")
-      print("Got here OK!\n")
       val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val unionRdd = rdd1.union(rdd2)
       assert(unionRdd.map(x => x._1).collect()(0).toString == "false")
+      print("Got here OK!\n")
+      print(s"${test.rdd.zip(test.rdd).collect().toSeq}\n")
+      assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
     }
   }
 }
