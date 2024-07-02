@@ -83,8 +83,7 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  */
 abstract class RDD[T: ClassTag](
     @transient private var _sc: SparkContext,
-    @transient private var deps: Seq[Dependency[_]],
-    @transient private val actionWrapper: (() => Any) => Any = x => x()
+    @transient private var deps: Seq[Dependency[_]]
   ) extends Serializable with Logging {
 
   if (classOf[RDD[_]].isAssignableFrom(elementClassTag.runtimeClass)) {
@@ -93,7 +92,7 @@ abstract class RDD[T: ClassTag](
     logWarning("Spark does not support nested RDDs (see SPARK-5063)")
   }
 
-  protected[spark] def getActionWrapper: (() => Any) => Any = actionWrapper
+  protected[spark] def getActionWrapper: (() => Any) => Any = x => x()
 
   private def sc: SparkContext = {
     if (_sc == null) {
@@ -105,10 +104,6 @@ abstract class RDD[T: ClassTag](
   /** Construct an RDD with just a one-to-one dependency on one parent */
   def this(@transient oneParent: RDD[_]) =
     this(oneParent.context, List(new OneToOneDependency(oneParent)))
-
-  def this(@transient oneParent: RDD[_], @transient actionWrapper: (() => Any) => Any) = {
-    this(oneParent.context, List(new OneToOneDependency(oneParent)), actionWrapper)
-  }
 
   private[spark] def conf = sc.conf
   // =======================================================================
