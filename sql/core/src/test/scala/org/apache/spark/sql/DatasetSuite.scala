@@ -2810,19 +2810,22 @@ class DatasetSuite extends QueryTest
         print(s"${Thread.currentThread().getName} on this thread\n")
         SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
       }
-      assert(test.collect()(0).toString == "false")
-      assert(test.rdd.collect()(0).toString == "false")
-      assert(test.rdd.map(identity).collect()(0).toString == "false")
-      assert(test.rdd.mapPartitions(identity).collect()(0).toString == "false")
-      assert(test.rdd.repartition(1).collect()(0).toString == "false")
-      assert(test.rdd.union(test.rdd).collect()(0).toString == "false")
+      assert(test.collect()(0) == "false")
+      assert(test.rdd.collect()(0) == "false")
+      assert(test.rdd.map(identity).collect()(0) == "false")
+      assert(test.rdd.mapPartitions(identity).collect()(0) == "false")
+      assert(test.rdd.repartition(1).collect()(0) == "false")
+      assert(test.rdd.union(test.rdd).collect()(0) == "false")
       val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val unionRdd = rdd1.union(rdd2)
-      assert(unionRdd.map(x => x._1).collect()(0).toString == "false")
-      print("Got here OK!\n")
-      print(s"${test.rdd.zip(test.rdd).collect().toSeq}\n")
+      assert(unionRdd.map(x => x._1).collect()(0) == "false")
       assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
+      print("Got here OK!\n")
+      // we do a union because we need at least 2 elements to get `takeSample`
+      // to instantiate a PartitionwiseSampledRDD
+      assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == "false")
+      assert(test.rdd.take(1)(0) == "false")
     }
   }
 }

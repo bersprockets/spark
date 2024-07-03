@@ -1501,7 +1501,9 @@ abstract class RDD[T: ClassTag](
         }
 
         val p = partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts))
-        val res = sc.runJob(this, (it: Iterator[T]) => it.take(left).toArray, p)
+        val res = getActionWrapper({ () =>
+          sc.runJob(this, (it: Iterator[T]) => it.take(left).toArray, p)
+        }).asInstanceOf[Array[Array[T]]]
 
         res.foreach(buf ++= _.take(num - buf.size))
         partsScanned += p.size
