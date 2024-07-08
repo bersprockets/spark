@@ -56,6 +56,16 @@ class CartesianRDD[T: ClassTag, U: ClassTag](
 
   val numPartitionsInRdd2 = rdd2.partitions.length
 
+  override def getActionWrapper: Option[(() => Any) => Any] = {
+    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
+    val rdds = Seq(rdd1, rdd2)
+    if (rdds != null) {
+      rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
+    } else {
+      None
+    }
+  }
+
   override def getPartitions: Array[Partition] = {
     // create the cross product split
     val partitionNum: Long = numPartitionsInRdd2.toLong * rdd1.partitions.length
