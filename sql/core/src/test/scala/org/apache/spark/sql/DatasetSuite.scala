@@ -2821,11 +2821,17 @@ class DatasetSuite extends QueryTest
       val unionRdd = rdd1.union(rdd2)
       assert(unionRdd.map(x => x._1).collect()(0) == "false")
       assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
-      print("Got here OK!\n")
       // we do a union because we need at least 2 elements to get `takeSample`
       // to instantiate a PartitionwiseSampledRDD
       assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == "false")
       assert(test.rdd.take(1)(0) == "false")
+      assert(test.rdd.cartesian(test.rdd).collect()(0)._1 == "false")
+      val plainRdd = test.sparkSession.sparkContext.parallelize(Seq("x"))
+      val unionWithPlain = test.rdd.union(plainRdd)
+      assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
+      print("Got here OK!\n")
+      val unionWithTest = plainRdd.union(test.rdd)
+      assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
     }
   }
 }

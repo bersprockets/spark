@@ -74,12 +74,12 @@ class UnionRDD[T: ClassTag](
   private[spark] val isPartitionListingParallel: Boolean =
     rdds.length > conf.get(RDD_PARALLEL_LISTING_THRESHOLD)
 
-  override def getActionWrapper: (() => Any) => Any = {
-    // print(s"UnionRDD: getActionWrapper called; rdds is ${rdds.headOption}\n")
-    if (rdds == null || rdds.isEmpty) {
-      super.getActionWrapper
+  override def getActionWrapper: Option[(() => Any) => Any] = {
+    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
+    if (rdds != null) {
+      rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {
-      rdds.head.getActionWrapper
+      None
     }
   }
 

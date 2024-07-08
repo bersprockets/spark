@@ -51,7 +51,7 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
 
   private var mapSideCombine: Boolean = false
 
-  override def getActionWrapper: (() => Any) => Any = {
+  override def getActionWrapper: Option[(() => Any) => Any] = {
     // print(s"ShuffledRDD: getActionWrapper called; prev is ${prev}\n")
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }

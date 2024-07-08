@@ -46,7 +46,7 @@ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
 
   override val partitioner = if (preservesPartitioning) firstParent[T].partitioner else None
 
-  override def getActionWrapper: (() => Any) => Any = {
+  override def getActionWrapper: Option[(() => Any) => Any] = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 

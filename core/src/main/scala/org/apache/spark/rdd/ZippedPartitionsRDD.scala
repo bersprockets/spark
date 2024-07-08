@@ -66,12 +66,12 @@ private[spark] abstract class ZippedPartitionsBaseRDD[V: ClassTag](
     }
   }
 
-  override def getActionWrapper: (() => Any) => Any = {
+  override def getActionWrapper: Option[(() => Any) => Any] = {
     // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
-    if (rdds == null || rdds.isEmpty) {
-      super.getActionWrapper
+    if (rdds != null) {
+      rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {
-      rdds.head.getActionWrapper
+      None
     }
   }
 

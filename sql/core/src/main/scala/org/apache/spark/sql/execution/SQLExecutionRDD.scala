@@ -46,11 +46,11 @@ class SQLExecutionRDD(
 
   override def getPartitions: Array[Partition] = firstParent[InternalRow].partitions
 
-  override def getActionWrapper: (() => Any) => Any = {
-    (f) =>
+  override def getActionWrapper: Option[(() => Any) => Any] = {
+    Some((f) =>
       withSQLConfPropagated(session) {
         f()
-      }
+      })
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
