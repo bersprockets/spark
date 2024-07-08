@@ -92,7 +92,7 @@ abstract class RDD[T: ClassTag](
     logWarning("Spark does not support nested RDDs (see SPARK-5063)")
   }
 
-  protected[spark] def getActionWrapper: (() => Any) => Any = x => x()
+  protected[spark] def getActionWrapper: Option[(() => Any) => Any] = None
 
   private def sc: SparkContext = {
     if (_sc == null) {
@@ -1056,9 +1056,9 @@ abstract class RDD[T: ClassTag](
    * all the data is loaded into the driver's memory.
    */
   def collect(): Array[T] = withScope {
-    val results = getActionWrapper({ () =>
+    val results = doAction(getActionWrapper) {
       sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
-    }).asInstanceOf[Array[Array[T]]]
+    }.asInstanceOf[Array[Array[T]]]
     import org.apache.spark.util.ArrayImplicits._
     Array.`concat`(results.toImmutableArraySeq: _*)
   }
@@ -1501,9 +1501,9 @@ abstract class RDD[T: ClassTag](
         }
 
         val p = partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts))
-        val res = getActionWrapper({ () =>
+        val res = doAction(getActionWrapper) {
           sc.runJob(this, (it: Iterator[T]) => it.take(left).toArray, p)
-        }).asInstanceOf[Array[Array[T]]]
+        }.asInstanceOf[Array[Array[T]]]
 
         res.foreach(buf ++= _.take(num - buf.size))
         partsScanned += p.size
@@ -2141,6 +2141,15 @@ abstract class RDD[T: ClassTag](
     }
   }
 
+  private def doAction(wrapper: Option[(() => Any) => Any])(f: => Any): Any = {
+    if (wrapper.isDefined) {
+      wrapper.get({ () =>
+        f
+      })
+    } else {
+      f
+    }
+  }
 }
 
 
