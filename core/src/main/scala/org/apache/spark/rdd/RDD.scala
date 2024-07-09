@@ -1056,7 +1056,7 @@ abstract class RDD[T: ClassTag](
    * all the data is loaded into the driver's memory.
    */
   def collect(): Array[T] = withScope {
-    val results = doAction(getActionWrapper) {
+    val results = doAction {
       sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
     }.asInstanceOf[Array[Array[T]]]
     import org.apache.spark.util.ArrayImplicits._
@@ -1305,7 +1305,7 @@ abstract class RDD[T: ClassTag](
   /**
    * Return the number of elements in the RDD.
    */
-  def count(): Long = doAction(getActionWrapper) {
+  def count(): Long = doAction {
     sc.runJob(this, Utils.getIteratorSize _).sum
   }.asInstanceOf[Long]
 
@@ -1503,7 +1503,7 @@ abstract class RDD[T: ClassTag](
         }
 
         val p = partsScanned.until(math.min(partsScanned + numPartsToTry, totalParts))
-        val res = doAction(getActionWrapper) {
+        val res = doAction {
           sc.runJob(this, (it: Iterator[T]) => it.take(left).toArray, p)
         }.asInstanceOf[Array[Array[T]]]
 
@@ -2143,7 +2143,8 @@ abstract class RDD[T: ClassTag](
     }
   }
 
-  private def doAction(wrapper: Option[(() => Any) => Any])(f: => Any): Any = {
+  private def doAction(f: => Any): Any = {
+    val wrapper = getActionWrapper
     if (wrapper.isDefined) {
       wrapper.get(() => f)
     } else {
