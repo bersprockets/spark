@@ -1305,7 +1305,9 @@ abstract class RDD[T: ClassTag](
   /**
    * Return the number of elements in the RDD.
    */
-  def count(): Long = sc.runJob(this, Utils.getIteratorSize _).sum
+  def count(): Long = doAction(getActionWrapper) {
+    sc.runJob(this, Utils.getIteratorSize _).sum
+  }.asInstanceOf[Long]
 
   /**
    * Approximate version of count() that returns a potentially incomplete result
