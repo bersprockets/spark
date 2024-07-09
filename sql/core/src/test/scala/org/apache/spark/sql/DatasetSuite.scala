@@ -2829,9 +2829,10 @@ class DatasetSuite extends QueryTest
       val plainRdd = test.sparkSession.sparkContext.parallelize(Seq("x"))
       val unionWithPlain = test.rdd.union(plainRdd)
       assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
-      print("Got here OK!\n")
       val unionWithTest = plainRdd.union(test.rdd)
       assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
+      print("Got here OK!\n")
+      assert(test.rdd.filter(_ == "false").count() == 1)
     }
   }
 }
