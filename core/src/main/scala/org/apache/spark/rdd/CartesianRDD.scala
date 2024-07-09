@@ -59,11 +59,7 @@ class CartesianRDD[T: ClassTag, U: ClassTag](
   override def getActionWrapper: Option[(() => Any) => Any] = {
     // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
     val rdds = Seq(rdd1, rdd2).filter(_ != null)
-    if (rdds != null) {
-      rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
-    } else {
-      None
-    }
+    rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
   }
 
   override def getPartitions: Array[Partition] = {
