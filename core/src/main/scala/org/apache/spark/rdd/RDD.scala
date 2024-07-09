@@ -2143,9 +2143,7 @@ abstract class RDD[T: ClassTag](
 
   private def doAction(wrapper: Option[(() => Any) => Any])(f: => Any): Any = {
     if (wrapper.isDefined) {
-      wrapper.get({ () =>
-        f
-      })
+      wrapper.get(() => f)
     } else {
       f
     }
