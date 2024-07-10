@@ -1149,7 +1149,9 @@ abstract class RDD[T: ClassTag](
         }
       }
     }
-    sc.runJob(this, reducePartition, mergeResult)
+    doAction {
+      sc.runJob(this, reducePartition, mergeResult)
+    }
     // Get the final result out of our Option, or throw an exception if the RDD was empty
     jobResult.getOrElse(throw SparkCoreErrors.emptyCollectionError())
   }
@@ -1212,7 +1214,9 @@ abstract class RDD[T: ClassTag](
     val cleanOp = sc.clean(op)
     val foldPartition = (iter: Iterator[T]) => iter.fold(zeroValue)(cleanOp)
     val mergeResult = (_: Int, taskResult: T) => jobResult = op(jobResult, taskResult)
-    sc.runJob(this, foldPartition, mergeResult)
+    doAction {
+      sc.runJob(this, foldPartition, mergeResult)
+    }
     jobResult
   }
 
