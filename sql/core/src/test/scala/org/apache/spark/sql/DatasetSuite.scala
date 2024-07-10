@@ -2830,9 +2830,12 @@ class DatasetSuite extends QueryTest
       // test takeOrdered action
       assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
 
+      // test aggregate
+      assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
+
       // test countApproxDistinct action
-      // def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
-      // assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
+      def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
+      assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
 
       // test MapPartitionsRDD
       assert(test.rdd.map(identity).collect()(0) == "false")
