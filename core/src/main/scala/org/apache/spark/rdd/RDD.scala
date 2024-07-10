@@ -1241,7 +1241,9 @@ abstract class RDD[T: ClassTag](
     val cleanSeqOp = sc.clean(seqOp)
     val aggregatePartition = (it: Iterator[T]) => it.foldLeft(zeroValue)(cleanSeqOp)
     val mergeResult = (_: Int, taskResult: U) => jobResult = combOp(jobResult, taskResult)
-    sc.runJob(this, aggregatePartition, mergeResult)
+    doAction {
+      sc.runJob(this, aggregatePartition, mergeResult)
+    }
     jobResult
   }
 
