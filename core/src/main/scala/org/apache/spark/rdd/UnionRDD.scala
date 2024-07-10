@@ -75,7 +75,6 @@ class UnionRDD[T: ClassTag](
     rdds.length > conf.get(RDD_PARALLEL_LISTING_THRESHOLD)
 
   override def getActionWrapper: Option[(() => Any) => Any] = {
-    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
     if (rdds != null) {
       rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {

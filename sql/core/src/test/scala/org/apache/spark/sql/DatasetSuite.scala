@@ -2811,31 +2811,55 @@ class DatasetSuite extends QueryTest
         SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
       }
       assert(test.collect()(0) == "false")
+
+      // test action collect
       assert(test.rdd.collect()(0) == "false")
+
+      // test action take
+      assert(test.rdd.take(1)(0) == "false")
+
+      // test action count
+      assert(test.rdd.filter(_ == "false").count() == 1)
+
+      // test MapPartitionsRDD
       assert(test.rdd.map(identity).collect()(0) == "false")
       assert(test.rdd.mapPartitions(identity).collect()(0) == "false")
+
+      // test CoalescedRDD
       assert(test.rdd.repartition(1).collect()(0) == "false")
+
+      // test UnionRDD
       assert(test.rdd.union(test.rdd).collect()(0) == "false")
+
+      // test PartitionerAwareUnionRDD
       val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val unionRdd = rdd1.union(rdd2)
       assert(unionRdd.map(x => x._1).collect()(0) == "false")
+
+      // test ZippedPartitionsRDD2
       assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
+
+      // test PartitionwiseSampledRDD
       // we do a union because we need at least 2 elements to get `takeSample`
       // to instantiate a PartitionwiseSampledRDD
       assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == "false")
-      assert(test.rdd.take(1)(0) == "false")
+
+      // test CartesianRDD
       assert(test.rdd.cartesian(test.rdd).collect()(0)._1 == "false")
+
+      // test SubtractedRDD
+      val sc = test.sparkSession.sparkContext
+      val unwantedRdd = sc.parallelize(Seq("false"), 1)
+      assert(test.rdd.subtract(unwantedRdd).count() == 0)
+
+      // test that the correct action wrapper is chosen when either RDD
+      // in an multi-RDD transformation is a non-SQL RDD
       val plainRdd = test.sparkSession.sparkContext.parallelize(Seq("x"))
       val unionWithPlain = test.rdd.union(plainRdd)
       assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
       val unionWithTest = plainRdd.union(test.rdd)
       assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
-      assert(test.rdd.filter(_ == "false").count() == 1)
-      print("Got here OK!\n")
-      val sc = test.sparkSession.sparkContext
-      val unwantedRdd = sc.parallelize(Seq("false"), 1)
-      assert(test.rdd.subtract(unwantedRdd).count() == 0)
     }
   }
 }

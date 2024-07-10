@@ -75,7 +75,6 @@ class PartitionerAwareUnionRDD[T: ClassTag](
   }
 
   override def getActionWrapper: Option[(() => Any) => Any] = {
-    // print(s"PartitionerAwareUnionRDD: getActionWrapper called; rdds is ${rdds.head}\n")
     if (rdds != null) {
       rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {

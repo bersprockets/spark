@@ -1060,7 +1060,7 @@ abstract class RDD[T: ClassTag](
       sc.runJob(this, (iter: Iterator[T]) => iter.toArray)
     }.asInstanceOf[Array[Array[T]]]
     import org.apache.spark.util.ArrayImplicits._
-    Array.`concat`(results.toImmutableArraySeq: _*)
+    Array.concat(results.toImmutableArraySeq: _*)
   }
 
   /**
