@@ -2821,6 +2821,19 @@ class DatasetSuite extends QueryTest
       // test action count
       assert(test.rdd.filter(_ == "false").count() == 1)
 
+      // test reduce action
+      assert(test.rdd.reduce(_ + _) == "false")
+
+      // test fold action
+      assert(test.rdd.fold("")(_ + _) == "false")
+
+      // test takeOrdered action
+      assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
+
+      // test countApproxDistinct action
+      // def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
+      // assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
+
       // test MapPartitionsRDD
       assert(test.rdd.map(identity).collect()(0) == "false")
       assert(test.rdd.mapPartitions(identity).collect()(0) == "false")
@@ -2835,7 +2848,7 @@ class DatasetSuite extends QueryTest
       val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val unionRdd = rdd1.union(rdd2)
-      assert(unionRdd.map(x => x._1).collect()(0) == "false")
+      assert(unionRdd.collect()(0)._1 == "false")
 
       // test ZippedPartitionsRDD2
       assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
