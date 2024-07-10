@@ -86,7 +86,6 @@ private[spark] class CoalescedRDD[T: ClassTag](
   }
 
   override def getActionWrapper: Option[(() => Any) => Any] = {
-    // print(s"CoalescedRDD: getActionWrapper called; prev is ${prev}\n")
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 
