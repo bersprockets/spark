@@ -51,7 +51,7 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
 
   private var mapSideCombine: Boolean = false
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 

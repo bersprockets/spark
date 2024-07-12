@@ -85,7 +85,7 @@ private[spark] class CoalescedRDD[T: ClassTag](
       "The partition coalescer passed in must be serializable.")
   }
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 
