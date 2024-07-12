@@ -74,7 +74,7 @@ class UnionRDD[T: ClassTag](
   private[spark] val isPartitionListingParallel: Boolean =
     rdds.length > conf.get(RDD_PARALLEL_LISTING_THRESHOLD)
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (rdds != null) {
       rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {

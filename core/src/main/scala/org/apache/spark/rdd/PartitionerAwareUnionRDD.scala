@@ -74,7 +74,7 @@ class PartitionerAwareUnionRDD[T: ClassTag](
     }.toArray
   }
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (rdds != null) {
       rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {

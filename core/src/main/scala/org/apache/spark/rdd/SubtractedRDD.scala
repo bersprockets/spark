@@ -54,7 +54,7 @@ private[spark] class SubtractedRDD[K: ClassTag, V: ClassTag, W: ClassTag](
   extends RDD[(K, V)](rdd1.context, Nil) {
 
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (rdd1 != null) {
       rdd1.getActionWrapper
     } else if (rdd2 != null) {
