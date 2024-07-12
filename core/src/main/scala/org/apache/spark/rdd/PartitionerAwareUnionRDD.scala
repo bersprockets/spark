@@ -74,13 +74,15 @@ class PartitionerAwareUnionRDD[T: ClassTag](
     }.toArray
   }
 
-  override def getActionWrapper: Option[(() => Any) => Any] = {
+  private lazy val _actionWrapper = {
     if (rdds != null) {
       rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
     } else {
       None
     }
   }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
 
   // Get the location where most of the partitions of parent RDDs are located
   override def getPreferredLocations(s: Partition): Seq[String] = {

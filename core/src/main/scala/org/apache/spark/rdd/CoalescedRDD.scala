@@ -85,9 +85,11 @@ private[spark] class CoalescedRDD[T: ClassTag](
       "The partition coalescer passed in must be serializable.")
   }
 
-  override def getActionWrapper: Option[(() => Any) => Any] = {
+  private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
 
   override def getPartitions: Array[Partition] = {
     val pc = partitionCoalescer.getOrElse(new DefaultPartitionCoalescer())

@@ -2806,8 +2806,7 @@ class DatasetSuite extends QueryTest
   test("stuffing") {
     withSQLConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS.key -> "false") {
       val df = Seq("test").toDF("a")
-      val test = df.map { r =>
-        print(s"${Thread.currentThread().getName} on this thread\n")
+      val test = df.map { _ =>
         SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
       }
       assert(test.collect()(0) == "false")
@@ -2830,8 +2829,17 @@ class DatasetSuite extends QueryTest
       // test takeOrdered action
       assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
 
-      // test aggregate
+      // test aggregate action
       assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
+
+      // test reduce action
+      assert(test.rdd.reduce(_ + _) == "false")
+
+      // test min action
+      assert(test.rdd.min() == "false")
+
+      // test max action
+      assert(test.rdd.max() == "false")
 
       // test countApproxDistinct action
       def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble

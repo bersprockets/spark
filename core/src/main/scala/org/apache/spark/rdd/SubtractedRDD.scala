@@ -54,7 +54,7 @@ private[spark] class SubtractedRDD[K: ClassTag, V: ClassTag, W: ClassTag](
   extends RDD[(K, V)](rdd1.context, Nil) {
 
 
-  override def getActionWrapper: Option[(() => Any) => Any] = {
+  private lazy val _actionWrapper = {
     if (rdd1 != null) {
       rdd1.getActionWrapper
     } else if (rdd2 != null) {
@@ -63,6 +63,8 @@ private[spark] class SubtractedRDD[K: ClassTag, V: ClassTag, W: ClassTag](
       None
     }
   }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
 
   override def getDependencies: Seq[Dependency[_]] = {
     def rddDependency[T1: ClassTag, T2: ClassTag](rdd: RDD[_ <: Product2[T1, T2]])

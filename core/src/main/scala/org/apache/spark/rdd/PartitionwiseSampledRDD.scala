@@ -53,9 +53,11 @@ private[spark] class PartitionwiseSampledRDD[T: ClassTag, U: ClassTag](
 
   @transient override val partitioner = if (preservesPartitioning) prev.partitioner else None
 
-  override def getActionWrapper: Option[(() => Any) => Any] = {
+  private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
 
   override def getPartitions: Array[Partition] = {
     val random = new Random(seed)
