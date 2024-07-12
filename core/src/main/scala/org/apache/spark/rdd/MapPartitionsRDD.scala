@@ -46,7 +46,7 @@ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
 
   override val partitioner = if (preservesPartitioning) firstParent[T].partitioner else None
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 

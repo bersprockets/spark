@@ -53,7 +53,7 @@ private[spark] class PartitionwiseSampledRDD[T: ClassTag, U: ClassTag](
 
   @transient override val partitioner = if (preservesPartitioning) prev.partitioner else None
 
-  private lazy val _actionWrapper = {
+  @transient private lazy val _actionWrapper = {
     if (prev != null) prev.getActionWrapper else super.getActionWrapper
   }
 
