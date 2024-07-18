@@ -1635,14 +1635,16 @@ abstract class RDD[T: ClassTag](
    * Save this RDD as a compressed text file, using string representations of elements.
    */
   def saveAsTextFile(path: String, codec: Class[_ <: CompressionCodec]): Unit = withScope {
-    this.mapPartitions { iter =>
-      val text = new Text()
-      iter.map { x =>
-        require(x != null, "text files do not allow null rows")
-        text.set(x.toString)
-        (NullWritable.get(), text)
-      }
-    }.saveAsHadoopFile[TextOutputFormat[NullWritable, Text]](path, codec)
+    doAction {
+      this.mapPartitions { iter =>
+        val text = new Text()
+        iter.map { x =>
+          require(x != null, "text files do not allow null rows")
+          text.set(x.toString)
+          (NullWritable.get(), text)
+        }
+      }.saveAsHadoopFile[TextOutputFormat[NullWritable, Text]](path, codec)
+    }
   }
 
   /**
