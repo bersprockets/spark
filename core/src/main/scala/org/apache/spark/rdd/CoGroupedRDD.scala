@@ -127,6 +127,16 @@ class CoGroupedRDD[K: ClassTag](
 
   override val partitioner: Some[Partitioner] = Some(part)
 
+  @transient private lazy val _actionWrapper = {
+    if (rdds != null) {
+      rdds.map(_.getActionWrapper).filter(_.isDefined).headOption.getOrElse(None)
+    } else {
+      None
+    }
+  }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
+
   override def compute(s: Partition, context: TaskContext): Iterator[(K, Array[Iterable[_]])] = {
     val split = s.asInstanceOf[CoGroupPartition]
     val numRdds = dependencies.length
