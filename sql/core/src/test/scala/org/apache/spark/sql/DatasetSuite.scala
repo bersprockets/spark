@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql
 
-import java.io.{Externalizable, ObjectInput, ObjectOutput}
+import java.io.{Externalizable, File, ObjectInput, ObjectOutput}
 import java.sql.{Date, Timestamp}
 
 import scala.collection.immutable.HashSet
@@ -2884,6 +2884,21 @@ class DatasetSuite extends QueryTest
       assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
       val unionWithTest = plainRdd.union(test.rdd)
       assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
+      withTempDir { dir =>
+        val outputDir = s"${dir.getCanonicalPath}${File.separator}test"
+        print(s"outputDir is ${outputDir}\n")
+        test.rdd.saveAsTextFile(outputDir)
+        val df = spark.read.text(outputDir)
+        assert(df.collect()(0).getString(0) == "false")
+      }
+
+      val idsRdd = test.sparkSession.sparkContext.parallelize(Seq("1", "2"), 1)
+      val pairsRDD1 = idsRdd.cartesian(test.rdd)
+      val pairsRDD2 = test.sparkSession.sparkContext.parallelize(Seq(("2", "false")), 1)
+      val cogroupedRes = pairsRDD1.cogroup(pairsRDD2).collect()
+      assert(cogroupedRes.size == 2)
+      assert(cogroupedRes(0)._2._1.size == 1)
+      assert(cogroupedRes(0)._2._1.head == "false")
     }
   }
 }
