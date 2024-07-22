@@ -43,16 +43,75 @@ class SQLExecutionRDD(
 
   override def getPartitions: Array[Partition] = firstParent[InternalRow].partitions
 
+  private def getThreadInfo(): String = {
+    s"${Thread.currentThread().getName} (${Thread.currentThread().getId})"
+  }
+  class LocalIterator(it: Iterator[InternalRow]) extends Iterator[InternalRow] {
+    private var initialized = false
+    private var oldConfOpt: Option[SQLConf] = None
+
+    TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+      if (initialized) {
+        if (SQLExecutionRDD.confInit.get) {
+          // print(s"${getThreadInfo()} un-initializing\n")
+          SQLConf.set(oldConfOpt)
+          initialized = false
+          SQLExecutionRDD.confInit.set(false)
+        } else {
+          initialized = false
+          // print(s"${getThreadInfo()} Avoid un-initializing\n")
+        }
+      }
+    }
+
+    def initialize(): Unit = {
+
+      if (!SQLExecutionRDD.confInit.get) {
+        // print(s"${getThreadInfo()} Setting conf\n")
+        oldConfOpt = SQLConf.set(Some(sqlConfExecutorSide))
+        initialized = true
+        SQLExecutionRDD.confInit.set(true)
+        // print(s"${getThreadInfo()} Done setting conf\n")
+      } else {
+        initialized = true
+        // print(s"${getThreadInfo()} Avoid setting conf\n")
+      }
+    }
+
+    override def next(): InternalRow = {
+      // print(s"${getThreadInfo()} In next\n")
+      if (!initialized) {
+        initialize()
+      }
+      it.next()
+    }
+
+    override def hasNext: Boolean = {
+      // print(s"${getThreadInfo()} In hasNext\n")
+      if (!initialized) {
+        initialize()
+      }
+      it.hasNext
+    }
+  }
+
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     // If we are in the context of a tracked SQL operation, `SQLExecution.EXECUTION_ID_KEY` is set
     // and we have nothing to do here. Otherwise, we use the `SQLConf` captured at the creation of
     // this RDD.
     if (context.getLocalProperty(SQLExecution.EXECUTION_ID_KEY) == null) {
       SQLConf.withExistingConf(sqlConfExecutorSide) {
-        firstParent[InternalRow].iterator(split, context)
+        // print(s"${getThreadInfo()} getting new LocalIterator\n")
+        new LocalIterator(firstParent[InternalRow].iterator(split, context))
       }
     } else {
       firstParent[InternalRow].iterator(split, context)
     }
+  }
+}
+
+object SQLExecutionRDD {
+  private lazy val confInit = new ThreadLocal[Boolean] {
+    override def initialValue: Boolean = false
   }
 }

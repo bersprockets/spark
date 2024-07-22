@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql
 
-import java.io.{Externalizable, ObjectInput, ObjectOutput}
+import java.io.{Externalizable, File, ObjectInput, ObjectOutput}
 import java.sql.{Date, Timestamp}
 
 import scala.collection.immutable.HashSet
@@ -30,7 +30,7 @@ import org.scalatest.Assertions._
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import org.apache.spark.{SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
+import org.apache.spark.{HashPartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
 import org.apache.spark.TestUtils.withListener
 import org.apache.spark.internal.config.MAX_RESULT_SIZE
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
@@ -2776,6 +2776,105 @@ class DatasetSuite extends QueryTest
         }
         assert(jobCounter === 0)
       }
+    }
+  }
+
+  test("stuffing") {
+    withSQLConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS.key -> "false") {
+      val df = Seq("test").toDF("a")
+      val test = df.map { _ =>
+        SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
+      }
+      assert(test.collect()(0) == "false")
+
+      // test action collect
+      assert(test.rdd.collect()(0) == "false")
+
+      // test action take
+      assert(test.rdd.take(1)(0) == "false")
+
+      // test action count
+      assert(test.rdd.filter(_ == "false").count() == 1)
+
+      // test reduce action
+      assert(test.rdd.reduce(_ + _) == "false")
+
+      // test fold action
+      assert(test.rdd.fold("")(_ + _) == "false")
+
+      // test takeOrdered action
+      assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
+
+      // test aggregate action
+      assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
+
+      // test reduce action
+      assert(test.rdd.reduce(_ + _) == "false")
+
+      // test min action
+      assert(test.rdd.min() == "false")
+
+      // test max action
+      assert(test.rdd.max() == "false")
+
+      // test countApproxDistinct action
+      def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
+      assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
+
+      // test MapPartitionsRDD
+      assert(test.rdd.map(identity).collect()(0) == "false")
+      assert(test.rdd.mapPartitions(identity).collect()(0) == "false")
+
+      // test CoalescedRDD
+      assert(test.rdd.repartition(1).collect()(0) == "false")
+
+      // test UnionRDD
+      assert(test.rdd.union(test.rdd).collect()(0) == "false")
+
+      // test PartitionerAwareUnionRDD
+      val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
+      val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
+      val unionRdd = rdd1.union(rdd2)
+      assert(unionRdd.collect()(0)._1 == "false")
+
+      // test ZippedPartitionsRDD2
+      assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
+
+      // test PartitionwiseSampledRDD
+      // we do a union because we need at least 2 elements to get `takeSample`
+      // to instantiate a PartitionwiseSampledRDD
+      assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == "false")
+
+      // test CartesianRDD
+      assert(test.rdd.cartesian(test.rdd).collect()(0)._1 == "false")
+
+      // test SubtractedRDD
+      val sc = test.sparkSession.sparkContext
+      val unwantedRdd = sc.parallelize(Seq("false"), 1)
+      assert(test.rdd.subtract(unwantedRdd).count() == 0)
+
+      // test that the correct action wrapper is chosen when either RDD
+      // in an multi-RDD transformation is a non-SQL RDD
+      val plainRdd = test.sparkSession.sparkContext.parallelize(Seq("x"))
+      val unionWithPlain = test.rdd.union(plainRdd)
+      assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
+      val unionWithTest = plainRdd.union(test.rdd)
+      assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
+      withTempDir { dir =>
+        val outputDir = s"${dir.getCanonicalPath}${File.separator}test"
+        print(s"outputDir is ${outputDir}\n")
+        test.rdd.saveAsTextFile(outputDir)
+        val df = spark.read.text(outputDir)
+        assert(df.collect()(0).getString(0) == "false")
+      }
+
+      val idsRdd = test.sparkSession.sparkContext.parallelize(Seq("1", "2"), 1)
+      val pairsRDD1 = idsRdd.cartesian(test.rdd)
+      val pairsRDD2 = test.sparkSession.sparkContext.parallelize(Seq(("2", "false")), 1)
+      val cogroupedRes = pairsRDD1.cogroup(pairsRDD2).collect()
+      assert(cogroupedRes.size == 2)
+      assert(cogroupedRes(0)._2._1.size == 1)
+      assert(cogroupedRes(0)._2._1.head == "false")
     }
   }
 }
