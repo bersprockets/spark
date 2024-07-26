@@ -2811,34 +2811,16 @@ class DatasetSuite extends QueryTest
       }
       assert(test.collect()(0) == "false")
 
-      // test action collect
+      // actions
       assert(test.rdd.collect()(0) == "false")
-
-      // test action take
       assert(test.rdd.take(1)(0) == "false")
-
-      // test action count
       assert(test.rdd.filter(_ == "false").count() == 1)
-
-      // test reduce action
       assert(test.rdd.reduce(_ + _) == "false")
-
-      // test fold action
       assert(test.rdd.fold("")(_ + _) == "false")
-
-      // test takeOrdered action
       assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
-
-      // test aggregate action
       assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
-
-      // test reduce action
       assert(test.rdd.reduce(_ + _) == "false")
-
-      // test min action
       assert(test.rdd.min() == "false")
-
-      // test max action
       assert(test.rdd.max() == "false")
 
       // test countApproxDistinct action
@@ -2886,7 +2868,6 @@ class DatasetSuite extends QueryTest
       assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
       withTempDir { dir =>
         val outputDir = s"${dir.getCanonicalPath}${File.separator}test"
-        print(s"outputDir is ${outputDir}\n")
         test.rdd.saveAsTextFile(outputDir)
         val df = spark.read.text(outputDir)
         assert(df.collect()(0).getString(0) == "false")
