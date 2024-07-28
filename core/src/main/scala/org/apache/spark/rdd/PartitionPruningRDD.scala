@@ -59,6 +59,12 @@ class PartitionPruningRDD[T: ClassTag](
     partitionFilterFunc: Int => Boolean)
   extends RDD[T](prev.context, List(new PruneDependency(prev, partitionFilterFunc))) {
 
+  @transient private lazy val _actionWrapper = {
+    if (prev != null) prev.getActionWrapper else super.getActionWrapper
+  }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
+
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     firstParent[T].iterator(
       split.asInstanceOf[PartitionPruningRDDPartition].parentSplit, context)
