@@ -30,7 +30,7 @@ import org.scalatest.Assertions._
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import org.apache.spark.{HashPartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
+import org.apache.spark.{HashPartitioner, RangePartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
 import org.apache.spark.TestUtils.withListener
 import org.apache.spark.internal.config.MAX_RESULT_SIZE
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
@@ -2818,14 +2818,27 @@ class DatasetSuite extends QueryTest
       assert(test.rdd.reduce(_ + _) == "false")
       assert(test.rdd.fold("")(_ + _) == "false")
       assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
+      assert(test.rdd.top(1).toSeq == Seq("false"))
+      assert(test.rdd.first() == "false")
       assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
-      assert(test.rdd.reduce(_ + _) == "false")
       assert(test.rdd.min() == "false")
       assert(test.rdd.max() == "false")
+      assert(test.rdd.filter(_ == "true").isEmpty())
+      test.rdd.foreach { x =>
+        assert(x == "false")
+      }
+      test.rdd.foreachPartition { it =>
+        it.foreach { x =>
+          assert(x == "false")
+        }
+      }
 
       // test countApproxDistinct action
       def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
       assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
+
+      // test local iterator
+      assert(test.rdd.toLocalIterator.toSeq == Seq("false"))
 
       // test MapPartitionsRDD
       assert(test.rdd.map(identity).collect()(0) == "false")
@@ -2846,6 +2859,14 @@ class DatasetSuite extends QueryTest
       // test ZippedPartitionsRDD2
       assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
 
+      assert(test.rdd.zipPartitions(test.rdd) { (it1, it2) =>
+        it1.zip(it2)
+      }.collect()(0)._1 == "false")
+
+      assert(test.rdd.zipWithIndex().collect()(0)._1 == "false")
+      assert(test.rdd.zipWithUniqueId().collect()(0)._1 == "false")
+      assert(test.rdd.keyBy(identity).collect()(0)._1 == "false")
+
       // test PartitionwiseSampledRDD
       // we do a union because we need at least 2 elements to get `takeSample`
       // to instantiate a PartitionwiseSampledRDD
@@ -2858,6 +2879,25 @@ class DatasetSuite extends QueryTest
       val sc = test.sparkSession.sparkContext
       val unwantedRdd = sc.parallelize(Seq("false"), 1)
       assert(test.rdd.subtract(unwantedRdd).count() == 0)
+
+      // test collect transformation
+      assert(test.rdd.collect {
+        case x: String => x
+      }.collect().toSeq == Seq("false"))
+
+      // test sortBy
+      assert(test.rdd.sortBy(identity).collect()(0) == "false")
+
+      // filterByRange
+      val keyedRdd = test.rdd.keyBy(identity)
+      assert(keyedRdd.filterByRange("false", "false").collect()(0)._2 == "false")
+
+      // test sortByKey
+      assert(keyedRdd.sortByKey().collect()(0)._2 == "false")
+
+      // test PartitionPruningRDD
+      val rangeRdd = keyedRdd.partitionBy(new RangePartitioner(2, keyedRdd))
+      assert(rangeRdd.filterByRange("false", "false").collect()(0)._2 == "false")
 
       // test that the correct action wrapper is chosen when either RDD
       // in an multi-RDD transformation is a non-SQL RDD

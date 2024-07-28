@@ -59,6 +59,12 @@ class ZippedWithIndexRDD[T: ClassTag](prev: RDD[T]) extends RDD[(T, Long)](prev)
     firstParent[T].partitions.map(x => new ZippedWithIndexRDDPartition(x, startIndices(x.index)))
   }
 
+  @transient private lazy val _actionWrapper = {
+    if (prev != null) prev.getActionWrapper else super.getActionWrapper
+  }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
+
   override def getPreferredLocations(split: Partition): Seq[String] =
     firstParent[T].preferredLocations(split.asInstanceOf[ZippedWithIndexRDDPartition].prev)
 

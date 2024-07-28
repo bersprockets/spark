@@ -1038,7 +1038,9 @@ abstract class RDD[T: ClassTag](
    */
   def foreach(f: T => Unit): Unit = withScope {
     val cleanF = sc.clean(f)
-    sc.runJob(this, (iter: Iterator[T]) => iter.foreach(cleanF))
+    doAction {
+      sc.runJob(this, (iter: Iterator[T]) => iter.foreach(cleanF))
+    }
   }
 
   /**
@@ -1046,7 +1048,9 @@ abstract class RDD[T: ClassTag](
    */
   def foreachPartition(f: Iterator[T] => Unit): Unit = withScope {
     val cleanF = sc.clean(f)
-    sc.runJob(this, (iter: Iterator[T]) => cleanF(iter))
+    doAction {
+      sc.runJob(this, (iter: Iterator[T]) => cleanF(iter))
+    }
   }
 
   /**
@@ -1074,7 +1078,9 @@ abstract class RDD[T: ClassTag](
    */
   def toLocalIterator: Iterator[T] = withScope {
     def collectPartition(p: Int): Array[T] = {
-      sc.runJob(this, (iter: Iterator[T]) => iter.toArray, Seq(p)).head
+      doAction {
+        sc.runJob(this, (iter: Iterator[T]) => iter.toArray, Seq(p)).head
+      }.asInstanceOf[Array[T]]
     }
     partitions.indices.iterator.flatMap(i => collectPartition(i))
   }
