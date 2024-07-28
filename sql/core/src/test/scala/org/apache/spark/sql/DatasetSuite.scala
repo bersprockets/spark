@@ -2804,122 +2804,129 @@ class DatasetSuite extends QueryTest
   }
 
   test("stuffing") {
-    withSQLConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS.key -> "false") {
+    val defaultValue = SQLConf.JSON_ENABLE_PARTIAL_RESULTS.defaultValueString
+    val expected = if (defaultValue == "true") "false" else "true"
+    withSQLConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS.key -> expected) {
       val df = Seq("test").toDF("a")
       val test = df.map { _ =>
         SQLConf.get.getConf(SQLConf.JSON_ENABLE_PARTIAL_RESULTS).toString
       }
-      assert(test.collect()(0) == "false")
+      assert(test.collect()(0) == expected)
 
       // actions
-      assert(test.rdd.collect()(0) == "false")
-      assert(test.rdd.take(1)(0) == "false")
-      assert(test.rdd.filter(_ == "false").count() == 1)
-      assert(test.rdd.reduce(_ + _) == "false")
-      assert(test.rdd.fold("")(_ + _) == "false")
-      assert(test.rdd.takeOrdered(2).toSeq == Seq("false"))
-      assert(test.rdd.top(1).toSeq == Seq("false"))
-      assert(test.rdd.first() == "false")
-      assert(test.rdd.aggregate("")(_ + _, _ + _) == "false")
-      assert(test.rdd.min() == "false")
-      assert(test.rdd.max() == "false")
-      assert(test.rdd.filter(_ == "true").isEmpty())
+      assert(test.rdd.collect()(0) == expected)
+      assert(test.rdd.take(1)(0) == expected)
+      assert(test.rdd.filter(_ == expected).count() == 1)
+      assert(test.rdd.reduce(_ + _) == expected)
+      assert(test.rdd.fold("")(_ + _) == expected)
+      assert(test.rdd.takeOrdered(2).toSeq == Seq(expected))
+      assert(test.rdd.top(1).toSeq == Seq(expected))
+      assert(test.rdd.first() == expected)
+      assert(test.rdd.aggregate("")(_ + _, _ + _) == expected)
+      assert(test.rdd.min() == expected)
+      assert(test.rdd.max() == expected)
+      assert(test.rdd.filter(_ == defaultValue).isEmpty())
       test.rdd.foreach { x =>
-        assert(x == "false")
+        assert(x == expected)
       }
       test.rdd.foreachPartition { it =>
         it.foreach { x =>
-          assert(x == "false")
+          assert(x == expected)
         }
       }
 
       // test countApproxDistinct action
       def error(est: Long, size: Long): Double = math.abs(est - size) / size.toDouble
-      assert(error(test.rdd.filter(_ == "false").countApproxDistinct(12, 0), 1) < 0.1)
+      assert(error(test.rdd.filter(_ == expected).countApproxDistinct(12, 0), 1) < 0.1)
 
       // test local iterator
-      assert(test.rdd.toLocalIterator.toSeq == Seq("false"))
+      assert(test.rdd.toLocalIterator.toSeq == Seq(expected))
 
       // test MapPartitionsRDD
-      assert(test.rdd.map(identity).collect()(0) == "false")
-      assert(test.rdd.mapPartitions(identity).collect()(0) == "false")
+      assert(test.rdd.map(identity).collect()(0) == expected)
+      assert(test.rdd.mapPartitions(identity).collect()(0) == expected)
 
       // test CoalescedRDD
-      assert(test.rdd.repartition(1).collect()(0) == "false")
+      assert(test.rdd.repartition(1).collect()(0) == expected)
 
       // test UnionRDD
-      assert(test.rdd.union(test.rdd).collect()(0) == "false")
+      assert(test.rdd.union(test.rdd).collect()(0) == expected)
 
       // test PartitionerAwareUnionRDD
       val rdd1 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val rdd2 = test.rdd.map(x => (x, null)).partitionBy(new HashPartitioner(2))
       val unionRdd = rdd1.union(rdd2)
-      assert(unionRdd.collect()(0)._1 == "false")
+      assert(unionRdd.collect()(0)._1 == expected)
 
       // test ZippedPartitionsRDD2
-      assert(test.rdd.zip(test.rdd).collect()(0)._1 == "false")
+      assert(test.rdd.zip(test.rdd).collect()(0)._1 == expected)
 
       assert(test.rdd.zipPartitions(test.rdd) { (it1, it2) =>
         it1.zip(it2)
-      }.collect()(0)._1 == "false")
+      }.collect()(0)._1 == expected)
 
-      assert(test.rdd.zipWithIndex().collect()(0)._1 == "false")
-      assert(test.rdd.zipWithUniqueId().collect()(0)._1 == "false")
-      assert(test.rdd.keyBy(identity).collect()(0)._1 == "false")
+      assert(test.rdd.zipWithIndex().collect()(0)._1 == expected)
+      assert(test.rdd.zipWithUniqueId().collect()(0)._1 == expected)
+      assert(test.rdd.keyBy(identity).collect()(0)._1 == expected)
 
       // test PartitionwiseSampledRDD
       // we do a union because we need at least 2 elements to get `takeSample`
       // to instantiate a PartitionwiseSampledRDD
-      assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == "false")
+      assert(test.rdd.union(test.rdd).takeSample(false, 1)(0) == expected)
 
       // test CartesianRDD
-      assert(test.rdd.cartesian(test.rdd).collect()(0)._1 == "false")
+      assert(test.rdd.cartesian(test.rdd).collect()(0)._1 == expected)
 
       // test SubtractedRDD
       val sc = test.sparkSession.sparkContext
-      val unwantedRdd = sc.parallelize(Seq("false"), 1)
+      val unwantedRdd = sc.parallelize(Seq(expected), 1)
       assert(test.rdd.subtract(unwantedRdd).count() == 0)
 
       // test collect transformation
       assert(test.rdd.collect {
         case x: String => x
-      }.collect().toSeq == Seq("false"))
+      }.collect().toSeq == Seq(expected))
+
+
+      assert(test.rdd.intersection(test.rdd).collect()(0) == expected)
+      assert(test.rdd.glom().collect()(0)(0) == expected)
+      assert(test.rdd.groupBy(identity).collect()(0)._1 == expected)
 
       // test sortBy
-      assert(test.rdd.sortBy(identity).collect()(0) == "false")
+      assert(test.rdd.sortBy(identity).collect()(0) == expected)
 
       // filterByRange
       val keyedRdd = test.rdd.keyBy(identity)
-      assert(keyedRdd.filterByRange("false", "false").collect()(0)._2 == "false")
+      assert(keyedRdd.filterByRange(expected, expected).collect()(0)._2 == expected)
 
       // test sortByKey
-      assert(keyedRdd.sortByKey().collect()(0)._2 == "false")
+      assert(keyedRdd.sortByKey().collect()(0)._2 == expected)
 
       // test PartitionPruningRDD
       val rangeRdd = keyedRdd.partitionBy(new RangePartitioner(2, keyedRdd))
-      assert(rangeRdd.filterByRange("false", "false").collect()(0)._2 == "false")
+      assert(rangeRdd.filterByRange(expected, expected).collect()(0)._2 == expected)
 
       // test that the correct action wrapper is chosen when either RDD
       // in an multi-RDD transformation is a non-SQL RDD
       val plainRdd = test.sparkSession.sparkContext.parallelize(Seq("x"))
       val unionWithPlain = test.rdd.union(plainRdd)
-      assert(unionWithPlain.collect().sorted.toSeq == Seq("false", "x"))
+      assert(unionWithPlain.collect().sorted.toSeq == Seq(expected, "x"))
       val unionWithTest = plainRdd.union(test.rdd)
-      assert(unionWithTest.collect().sorted.toSeq == Seq("false", "x"))
+      assert(unionWithTest.collect().sorted.toSeq == Seq(expected, "x"))
       withTempDir { dir =>
         val outputDir = s"${dir.getCanonicalPath}${File.separator}test"
         test.rdd.saveAsTextFile(outputDir)
         val df = spark.read.text(outputDir)
-        assert(df.collect()(0).getString(0) == "false")
+        assert(df.collect()(0).getString(0) == expected)
       }
 
       val idsRdd = test.sparkSession.sparkContext.parallelize(Seq("1", "2"), 1)
       val pairsRDD1 = idsRdd.cartesian(test.rdd)
-      val pairsRDD2 = test.sparkSession.sparkContext.parallelize(Seq(("2", "false")), 1)
+      val pairsRDD2 = test.sparkSession.sparkContext.parallelize(Seq(("2", expected)), 1)
       val cogroupedRes = pairsRDD1.cogroup(pairsRDD2).collect()
       assert(cogroupedRes.size == 2)
       assert(cogroupedRes(0)._2._1.size == 1)
-      assert(cogroupedRes(0)._2._1.head == "false")
+      assert(cogroupedRes(0)._2._1.head == expected)
     }
   }
 }
