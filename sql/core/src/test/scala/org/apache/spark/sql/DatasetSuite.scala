@@ -2927,6 +2927,8 @@ class DatasetSuite extends QueryTest
       assert(cogroupedRes.size == 2)
       assert(cogroupedRes(0)._2._1.size == 1)
       assert(cogroupedRes(0)._2._1.head == expected)
+
+      assert(test.rdd.pipe(Seq("cat")).collect()(0) == expected)
     }
   }
 }

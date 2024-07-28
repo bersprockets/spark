@@ -56,6 +56,12 @@ private[spark] class PipedRDD[T: ClassTag](
 
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 
+  @transient private lazy val _actionWrapper = {
+    if (prev != null) prev.getActionWrapper else super.getActionWrapper
+  }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
+
   /**
    * A FilenameFilter that accepts anything that isn't equal to the name passed in.
    * @param filterName of file or directory to leave out
