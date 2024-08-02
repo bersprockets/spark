@@ -30,7 +30,7 @@ import org.scalatest.Assertions._
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.TableDrivenPropertyChecks._
 
-import org.apache.spark.{HashPartitioner, RangePartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
+import org.apache.spark.{HashPartitioner, PartitionEvaluator, PartitionEvaluatorFactory, RangePartitioner, SparkConf, SparkRuntimeException, SparkUnsupportedOperationException, TaskContext}
 import org.apache.spark.TestUtils.withListener
 import org.apache.spark.internal.config.MAX_RESULT_SIZE
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
@@ -55,6 +55,18 @@ import org.apache.spark.util.ArrayImplicits._
 
 case class TestDataPoint(x: Int, y: Double, s: String, t: TestDataPoint2)
 case class TestDataPoint2(x: Int, s: String)
+
+class MyEval extends PartitionEvaluator[String, String] {
+  def eval(index: Int, inputs: Iterator[String]*): Iterator[String] = {
+    inputs.flatMap(identity).map(x => s"x$x").iterator
+  }
+}
+
+class MyEvalFactory extends PartitionEvaluatorFactory[String, String] {
+  def createEvaluator(): PartitionEvaluator[String, String] = {
+    return new MyEval;
+  }
+}
 
 object TestForTypeAlias {
   type TwoInt = (Int, Int)
@@ -2882,11 +2894,14 @@ class DatasetSuite extends QueryTest
       val unwantedRdd = sc.parallelize(Seq(expected), 1)
       assert(test.rdd.subtract(unwantedRdd).count() == 0)
 
+      // test MapPartitionsWithEvaluatorRDD
+      val factory = new MyEvalFactory
+      assert(test.rdd.mapPartitionsWithEvaluator(factory).collect()(0) == "xfalse")
+
       // test collect transformation
       assert(test.rdd.collect {
         case x: String => x
       }.collect().toSeq == Seq(expected))
-
 
       assert(test.rdd.intersection(test.rdd).collect()(0) == expected)
       assert(test.rdd.glom().collect()(0)(0) == expected)

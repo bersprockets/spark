@@ -28,6 +28,12 @@ private[spark] class MapPartitionsWithEvaluatorRDD[T : ClassTag, U : ClassTag](
 
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 
+  @transient private lazy val _actionWrapper = {
+    if (prev != null) prev.getActionWrapper else super.getActionWrapper
+  }
+
+  override def getActionWrapper: Option[(() => Any) => Any] = _actionWrapper
+
   override def compute(split: Partition, context: TaskContext): Iterator[U] = {
     val evaluator = evaluatorFactory.createEvaluator()
     val input = firstParent[T].iterator(split, context)
