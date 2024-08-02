@@ -2898,6 +2898,9 @@ class DatasetSuite extends QueryTest
       val factory = new MyEvalFactory
       assert(test.rdd.mapPartitionsWithEvaluator(factory).collect()(0) == "xfalse")
 
+      // test ZippedPartitionsWithEvaluatorRDD
+      assert(test.rdd.zipPartitionsWithEvaluator(test.rdd, factory).collect()(0) == "xfalse")
+
       // test collect transformation
       assert(test.rdd.collect {
         case x: String => x
