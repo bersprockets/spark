@@ -2938,6 +2938,13 @@ class DatasetSuite extends QueryTest
         assert(df.collect()(0).getString(0) == expected)
       }
 
+      withTempDir { dir =>
+        val outputDir = s"${dir.getCanonicalPath}${File.separator}test"
+        test.rdd.saveAsObjectFile(outputDir)
+        val result = test.sparkSession.sparkContext.objectFile[String](outputDir).collect()(0)
+        assert(result == expected)
+      }
+
       val idsRdd = test.sparkSession.sparkContext.parallelize(Seq("1", "2"), 1)
       val pairsRDD1 = idsRdd.cartesian(test.rdd)
       val pairsRDD2 = test.sparkSession.sparkContext.parallelize(Seq(("2", expected)), 1)
