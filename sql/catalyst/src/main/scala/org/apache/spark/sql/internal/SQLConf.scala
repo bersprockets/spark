@@ -2038,7 +2038,7 @@ object SQLConf {
       " method.")
     .version("2.0.0")
     .booleanConf
-    .createWithDefault(true)
+    .createWithDefault(false)
 
   val WHOLESTAGE_CODEGEN_USE_ID_IN_CLASS_NAME =
     buildConf("spark.sql.codegen.useIdInClassName")
