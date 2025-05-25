@@ -22,6 +22,7 @@ import scala.language.implicitConversions
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql
 import org.apache.spark.sql.Encoder
+import org.apache.spark.util.Utils
 
 /** @inheritdoc */
 abstract class SQLImplicits extends sql.SQLImplicits {
@@ -36,7 +37,28 @@ abstract class SQLImplicits extends sql.SQLImplicits {
 }
 
 class DatasetHolder[U](ds: Dataset[U]) extends sql.DatasetHolder[U] {
-  override def toDS(): Dataset[U] = ds
-  override def toDF(): DataFrame = ds.toDF()
-  override def toDF(colNames: String*): DataFrame = ds.toDF(colNames: _*)
+  override def toDS(): Dataset[U] = {
+    if (Utils.isTesting) {
+      ds.persist()
+    } else {
+      ds
+    }
+  }
+  override def toDF(): DataFrame = {
+    val df = ds.toDF()
+    if (Utils.isTesting) {
+      df.persist()
+    } else {
+      df
+    }
+  }
+
+  override def toDF(colNames: String*): DataFrame = {
+    val df = ds.toDF(colNames : _*)
+    if (Utils.isTesting) {
+      df.persist()
+    } else {
+      df
+    }
+  }
 }
