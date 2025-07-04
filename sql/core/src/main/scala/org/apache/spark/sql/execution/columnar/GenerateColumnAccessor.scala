@@ -76,6 +76,7 @@ object GenerateColumnAccessor extends CodeGenerator[Seq[DataType], ColumnarItera
     val ctx = newCodeGenContext()
     val numFields = columnTypes.size
     val (initializeAccessors, extractors) = columnTypes.zipWithIndex.map { case (dt, index) =>
+      print(s"Got here #0a with data type ${dt}\n")
       val accessorCls = dt match {
         case NullType => classOf[NullColumnAccessor].getName
         case BooleanType => classOf[BooleanColumnAccessor].getName
