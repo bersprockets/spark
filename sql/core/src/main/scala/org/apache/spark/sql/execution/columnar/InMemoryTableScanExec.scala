@@ -180,6 +180,7 @@ case class InMemoryTableScanExec(
 
   protected override def doExecuteColumnar(): RDD[ColumnarBatch] = {
     // Resulting RDD is cached and reused by SparkPlan.executeColumnarRDD
+    print("Blippy! I'm here!\n")
     val numOutputRows = longMetric("numOutputRows")
     val buffers = filteredCachedBatches()
     relation.cacheBuilder.serializer.convertCachedBatchToColumnarBatch(
