@@ -162,7 +162,7 @@ trait SQLQueryTestHelper extends SQLConfHelper with Logging {
     if (cvcs.nonEmpty) {
       val name = cvcs.head.name.table
       try {
-        session.sql(s"cache table ${name}")
+        session.sql(s"cache table ${name} options ('storageLevel' 'DISK_ONLY')")
       } catch {
         case e: Exception =>
           print(s"Exception caching view ${name}: ${e.getMessage}\n")
