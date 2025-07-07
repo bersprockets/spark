@@ -167,6 +167,7 @@ private[sql] object ColumnAccessor {
 
   def decompress(columnAccessor: ColumnAccessor, columnVector: WritableColumnVector, numRows: Int):
       Unit = {
+    print("Entered decompress!\n")
     columnAccessor match {
       case nativeAccessor: NativeColumnAccessor[_] =>
         nativeAccessor.decompress(columnVector, numRows)

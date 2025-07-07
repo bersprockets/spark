@@ -71,7 +71,7 @@ public final class ColumnarArray extends ArrayData {
   @Override
   public ArrayData copy() {
     DataType dt = data.dataType();
-
+    System.out.println("ColumnarArray#copy for data type " + dt);
     if (dt instanceof BooleanType) {
       return setNullBits(UnsafeArrayData.fromPrimitiveArray(toBooleanArray()));
     } else if (dt instanceof ByteType) {
@@ -89,6 +89,7 @@ public final class ColumnarArray extends ArrayData {
     } else if (dt instanceof DoubleType) {
       return setNullBits(UnsafeArrayData.fromPrimitiveArray(toDoubleArray()));
     } else {
+      System.out.println("ColumnarArray#copy default branch");
       return new GenericArrayData(toObjectArray(dt)).copy(); // ensure the elements are copied.
     }
   }
