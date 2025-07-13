@@ -19,6 +19,7 @@ package org.apache.spark.sql.execution.columnar
 
 import java.nio.{ByteBuffer, ByteOrder}
 
+import org.apache.spark.SparkException
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.types.{PhysicalArrayType, PhysicalDataType, PhysicalMapType, PhysicalStructType}
 import org.apache.spark.sql.errors.QueryExecutionErrors
@@ -164,7 +165,13 @@ private[columnar] object ColumnBuilder {
     } else {
       // grow in steps of initial size
       val capacity = orig.capacity()
-      val newSize = capacity + size.max(capacity)
+      val newSizeLong: Long = capacity.toLong + size.max(capacity)
+      print(s"capacity is ${capacity} and size is ${size}\n")
+      print(s"newSizeLong is ${newSizeLong}\n")
+      if (newSizeLong > Integer.MAX_VALUE) {
+        throw new SparkException("Whoopy do")
+      }
+      val newSize = newSizeLong.toInt
       val pos = orig.position()
 
       ByteBuffer
