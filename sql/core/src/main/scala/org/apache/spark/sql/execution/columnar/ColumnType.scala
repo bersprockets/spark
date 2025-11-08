@@ -863,7 +863,6 @@ private[columnar] object VARIANT
 private[columnar] object ColumnType {
   @tailrec
   def apply(dataType: DataType): ColumnType[_] = {
-    print(s"Got here #3a with data type ${dataType}\n")
     dataType match {
       case NullType => NULL
       case BooleanType => BOOLEAN
@@ -871,7 +870,6 @@ private[columnar] object ColumnType {
       case ShortType => SHORT
       case IntegerType | DateType | _: YearMonthIntervalType => INT
       case LongType | TimestampType | TimestampNTZType | _: DayTimeIntervalType | _: TimeType =>
-        print("Got here #3\n")
         LONG
       case FloatType => FLOAT
       case DoubleType => DOUBLE

@@ -140,7 +140,7 @@ private[sql] object ColumnAccessor {
   @tailrec
   def apply(dataType: DataType, buffer: ByteBuffer): ColumnAccessor = {
     val buf = buffer.order(ByteOrder.nativeOrder)
-    print(s"Got here #1a for data type ${dataType}\n")
+
     dataType match {
       case NullType => new NullColumnAccessor(buf)
       case BooleanType => new BooleanColumnAccessor(buf)
@@ -148,7 +148,6 @@ private[sql] object ColumnAccessor {
       case ShortType => new ShortColumnAccessor(buf)
       case IntegerType | DateType | _: YearMonthIntervalType => new IntColumnAccessor(buf)
       case LongType | TimestampType | TimestampNTZType | _: DayTimeIntervalType | _: TimeType =>
-        print("Got here #1\n")
         new LongColumnAccessor(buf)
       case FloatType => new FloatColumnAccessor(buf)
       case DoubleType => new DoubleColumnAccessor(buf)
@@ -167,7 +166,6 @@ private[sql] object ColumnAccessor {
 
   def decompress(columnAccessor: ColumnAccessor, columnVector: WritableColumnVector, numRows: Int):
       Unit = {
-    print("Entered decompress!\n")
     columnAccessor match {
       case nativeAccessor: NativeColumnAccessor[_] =>
         nativeAccessor.decompress(columnVector, numRows)

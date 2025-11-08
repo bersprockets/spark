@@ -149,7 +149,6 @@ case class InMemoryTableScanExec(
   }
 
   protected override def doExecute(): RDD[InternalRow] = {
-    print("Flippy! I'm here!\n")
     // Resulting RDD is cached and reused by SparkPlan.executeRDD
     if (enableAccumulatorsForTest) {
       readPartitions.setValue(0)
@@ -181,7 +180,6 @@ case class InMemoryTableScanExec(
 
   protected override def doExecuteColumnar(): RDD[ColumnarBatch] = {
     // Resulting RDD is cached and reused by SparkPlan.executeColumnarRDD
-    print("Blippy! I'm here!\n")
     val numOutputRows = longMetric("numOutputRows")
     val buffers = filteredCachedBatches()
     relation.cacheBuilder.serializer.convertCachedBatchToColumnarBatch(
