@@ -265,8 +265,7 @@ private object RowToColumnConverter {
       case ShortType => ShortConverter
       case IntegerType | DateType | _: YearMonthIntervalType => IntConverter
       case FloatType => FloatConverter
-      case LongType | TimestampType | TimestampNTZType | _: DayTimeIntervalType =>
-        LongConverter
+      case LongType | TimestampType | TimestampNTZType | _: DayTimeIntervalType => LongConverter
       case DoubleType => DoubleConverter
       case StringType => StringConverter
       case _: GeographyType => GeographyConverter
